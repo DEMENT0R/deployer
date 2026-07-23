@@ -22,7 +22,7 @@ const showingNavigationDropdown = ref(false);
                         <div class="flex">
                             <!-- Logo -->
                             <div class="flex shrink-0 items-center">
-                                <Link :href="route('dashboard')">
+                                <Link :href="route('instances.index')">
                                     <ApplicationLogo
                                         class="block h-9 w-auto fill-current text-gray-800"
                                     />
@@ -34,11 +34,31 @@ const showingNavigationDropdown = ref(false);
                                 class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex"
                             >
                                 <NavLink
-                                    :href="route('dashboard')"
-                                    :active="route().current('dashboard')"
+                                    :href="route('instances.index')"
+                                    :active="route().current('instances.*')"
                                 >
-                                    Dashboard
+                                    Instances
                                 </NavLink>
+                                <template v-if="$page.props.auth.user?.is_admin">
+                                    <NavLink
+                                        :href="route('admin.instances.index')"
+                                        :active="route().current('admin.instances.*')"
+                                    >
+                                        Admin Instances
+                                    </NavLink>
+                                    <NavLink
+                                        :href="route('admin.users.index')"
+                                        :active="route().current('admin.users.*')"
+                                    >
+                                        Users
+                                    </NavLink>
+                                    <NavLink
+                                        :href="route('admin.queues.index')"
+                                        :active="route().current('admin.queues.*')"
+                                    >
+                                        Queues
+                                    </NavLink>
+                                </template>
                             </div>
                         </div>
 
@@ -141,11 +161,31 @@ const showingNavigationDropdown = ref(false);
                 >
                     <div class="space-y-1 pb-3 pt-2">
                         <ResponsiveNavLink
-                            :href="route('dashboard')"
-                            :active="route().current('dashboard')"
+                            :href="route('instances.index')"
+                            :active="route().current('instances.*')"
                         >
-                            Dashboard
+                            Instances
                         </ResponsiveNavLink>
+                        <template v-if="$page.props.auth.user?.is_admin">
+                            <ResponsiveNavLink
+                                :href="route('admin.instances.index')"
+                                :active="route().current('admin.instances.*')"
+                            >
+                                Admin Instances
+                            </ResponsiveNavLink>
+                            <ResponsiveNavLink
+                                :href="route('admin.users.index')"
+                                :active="route().current('admin.users.*')"
+                            >
+                                Users
+                            </ResponsiveNavLink>
+                            <ResponsiveNavLink
+                                :href="route('admin.queues.index')"
+                                :active="route().current('admin.queues.*')"
+                            >
+                                Queues
+                            </ResponsiveNavLink>
+                        </template>
                     </div>
 
                     <!-- Responsive Settings Options -->
