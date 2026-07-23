@@ -3,8 +3,10 @@
 namespace Tests\Feature;
 
 use App\Enums\DeployAction;
+use App\Enums\DeployStatus;
 use App\Enums\UserRole;
 use App\Jobs\DeployInstanceJob;
+use App\Models\Deployment;
 use App\Models\Instance;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -68,6 +70,30 @@ class DeployControllerTest extends TestCase
                 'action' => DeployAction::Migrate->value,
             ])
             ->assertForbidden();
+
+        Queue::assertNothingPushed();
+    }
+
+    public function test_deploy_is_rejected_while_another_one_is_in_progress(): void
+    {
+        Queue::fake();
+
+        $admin = User::factory()->create(['role' => UserRole::Admin]);
+        $instance = Instance::factory()->create();
+
+        Deployment::create([
+            'instance_id' => $instance->id,
+            'user_id' => $admin->id,
+            'branch' => 'main',
+            'action' => DeployAction::Full,
+            'status' => DeployStatus::Running,
+        ]);
+
+        $this->actingAs($admin)
+            ->post(route('instances.deploy', $instance), [
+                'action' => DeployAction::Migrate->value,
+            ])
+            ->assertSessionHasErrors('deploy');
 
         Queue::assertNothingPushed();
     }

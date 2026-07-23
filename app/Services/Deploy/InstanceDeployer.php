@@ -54,6 +54,7 @@ class InstanceDeployer
                 });
             }
 
+            $deployment->flushOutput();
             $deployment->update([
                 'status' => DeployStatus::Success,
                 'current_step' => null,
@@ -65,6 +66,7 @@ class InstanceDeployer
             }
         } catch (Throwable $e) {
             $deployment->appendOutput("\n[ERROR] ".$e->getMessage());
+            $deployment->flushOutput();
             $deployment->update([
                 'status' => DeployStatus::Failed,
                 'exit_code' => $deployment->exit_code ?? 1,
@@ -82,8 +84,10 @@ class InstanceDeployer
 
         try {
             $callback();
+            $deployment->flushOutput();
             $deployment->markStepSuccess($step);
         } catch (Throwable $e) {
+            $deployment->flushOutput();
             $steps = $deployment->steps ?? [];
             $steps[$step->value] = 'failed';
             $deployment->update([

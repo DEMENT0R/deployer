@@ -51,9 +51,40 @@ class Deployment extends Model
         return $this->status === DeployStatus::Running;
     }
 
+    /**
+     * Output arrives chunk by chunk; writing every one of them rewrites the whole
+     * longText column, so buffer and flush on size or time. Callers must flush at
+     * step boundaries so the log is complete when a step ends or fails.
+     */
+    private const OUTPUT_FLUSH_BYTES = 4096;
+
+    private const OUTPUT_FLUSH_SECONDS = 1.0;
+
+    private string $outputBuffer = '';
+
+    private ?float $lastOutputFlush = null;
+
     public function appendOutput(string $chunk): void
     {
-        $this->output = ($this->output ?? '').$chunk;
+        $this->outputBuffer .= $chunk;
+        $this->lastOutputFlush ??= microtime(true);
+
+        if (strlen($this->outputBuffer) >= self::OUTPUT_FLUSH_BYTES
+            || microtime(true) - $this->lastOutputFlush >= self::OUTPUT_FLUSH_SECONDS) {
+            $this->flushOutput();
+        }
+    }
+
+    public function flushOutput(): void
+    {
+        $this->lastOutputFlush = microtime(true);
+
+        if ($this->outputBuffer === '') {
+            return;
+        }
+
+        $this->output = ($this->output ?? '').$this->outputBuffer;
+        $this->outputBuffer = '';
         $this->save();
     }
 

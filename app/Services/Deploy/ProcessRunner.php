@@ -107,11 +107,48 @@ class ProcessRunner
     }
 
     /**
+     * Symfony merges our env with the inherited one, but the inherited set is
+     * intersected with $_SERVER — under a web SAPI that holds request variables,
+     * not the OS environment. On Windows the lost SystemRoot makes git fail with
+     * "getaddrinfo() thread failed to start", so carry the essentials over here.
+     *
+     * @var list<string>
+     */
+    private const INHERITED_ENV_KEYS = [
+        'SystemRoot',
+        'SystemDrive',
+        'windir',
+        'ComSpec',
+        'PATH',
+        'PATHEXT',
+        'TEMP',
+        'TMP',
+        'APPDATA',
+        'LOCALAPPDATA',
+        'ProgramData',
+        'ProgramFiles',
+        'ProgramFiles(x86)',
+        'HOMEDRIVE',
+        'HOMEPATH',
+        'USERNAME',
+    ];
+
+    /**
      * @return array<string, string>
      */
     private function environment(): array
     {
-        $env = config('deployer.git_env', []);
+        $env = [];
+
+        foreach (self::INHERITED_ENV_KEYS as $key) {
+            $value = getenv($key);
+
+            if ($value !== false) {
+                $env[$key] = $value;
+            }
+        }
+
+        $env = array_merge($env, config('deployer.git_env', []));
 
         if ($profile = config('deployer.git_userprofile')) {
             $env['USERPROFILE'] = $profile;

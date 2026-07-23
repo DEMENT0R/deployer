@@ -8,30 +8,43 @@ use App\Jobs\DeployInstanceJob;
 use App\Models\Deployment;
 use App\Models\Instance;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\Cache;
 
 class DeployController extends Controller
 {
     public function store(StoreDeploymentRequest $request, Instance $instance): RedirectResponse
     {
-        $hasRunning = $instance->deployments()
-            ->whereIn('status', [DeployStatus::Pending, DeployStatus::Running])
-            ->exists();
+        $validated = $request->validated();
 
-        if ($hasRunning) {
+        // Check and insert must be atomic, otherwise two clicks both pass the check
+        // and the loser only finds out once its job hits the deploy lock.
+        $lock = Cache::lock("deploy:create:{$instance->id}", 10);
+
+        if (! $lock->get()) {
             return back()->withErrors(['deploy' => 'A deployment is already in progress for this instance.']);
         }
 
-        $validated = $request->validated();
+        try {
+            $hasRunning = $instance->deployments()
+                ->whereIn('status', [DeployStatus::Pending, DeployStatus::Running])
+                ->exists();
 
-        $deployment = Deployment::create([
-            'instance_id' => $instance->id,
-            'user_id' => $request->user()->id,
-            'branch' => $validated['branch'] ?? null,
-            'action' => $validated['action'],
-            'status' => DeployStatus::Pending,
-        ]);
+            if ($hasRunning) {
+                return back()->withErrors(['deploy' => 'A deployment is already in progress for this instance.']);
+            }
 
-        DeployInstanceJob::dispatch($deployment);
+            $deployment = Deployment::create([
+                'instance_id' => $instance->id,
+                'user_id' => $request->user()->id,
+                'branch' => $validated['branch'] ?? null,
+                'action' => $validated['action'],
+                'status' => DeployStatus::Pending,
+            ]);
+        } finally {
+            $lock->release();
+        }
+
+        DeployInstanceJob::dispatch($deployment->id);
 
         return back()->with('success', 'Deployment queued.');
     }

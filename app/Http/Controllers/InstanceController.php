@@ -32,11 +32,14 @@ class InstanceController extends Controller
         $this->authorize('view', $instance);
 
         $branches = ['branches' => [], 'current' => null];
+        $branchError = null;
 
         try {
             $branches = $branchResolver->resolve($instance);
-        } catch (\Throwable) {
-            // Path may not exist in dev; UI still renders.
+        } catch (\Throwable $e) {
+            // The page still renders — the picker is empty and says why.
+            report($e);
+            $branchError = trim($e->getMessage()) ?: 'Failed to load branches.';
         }
 
         $activeDeployment = $instance->deployments()
@@ -50,6 +53,7 @@ class InstanceController extends Controller
             'instance' => $this->formatInstance($instance),
             'branches' => $branches['branches'],
             'currentBranch' => $branches['current'],
+            'branchError' => $branchError,
             'deployment' => $activeDeployment
                 ? $this->formatDeployment($activeDeployment)
                 : ($latestDeployment ? $this->formatDeployment($latestDeployment) : null),

@@ -56,8 +56,11 @@ class GitService
         $prefix = "{$remote}/";
 
         return collect(explode("\n", trim($result->output)))
+            ->map(fn (string $ref) => trim($ref))
             ->map(fn (string $ref) => str_starts_with($ref, $prefix) ? substr($ref, strlen($prefix)) : $ref)
             ->filter()
+            // origin/HEAD is a symbolic ref to the default branch, not a branch to check out.
+            ->reject(fn (string $branch) => $branch === 'HEAD')
             ->unique()
             ->sort()
             ->values()

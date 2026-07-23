@@ -161,7 +161,8 @@ class QueueMonitorService
         $deploymentId = null;
         $command = is_array($data) ? ($data['data']['command'] ?? '') : '';
 
-        if (is_string($command) && preg_match('/Deployment.*?s:2:"id";i:(\d+)/s', $command, $matches)) {
+        // Matches DeployInstanceJob::$deploymentId — our own property, not Eloquent internals.
+        if (is_string($command) && preg_match('/s:12:"deploymentId";i:(\d+)/', $command, $matches)) {
             $deploymentId = (int) $matches[1];
         }
 

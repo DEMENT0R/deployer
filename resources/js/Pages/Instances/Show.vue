@@ -23,6 +23,10 @@ const props = defineProps({
         type: String,
         default: null,
     },
+    branchError: {
+        type: String,
+        default: null,
+    },
     deployment: {
         type: Object,
         default: null,
@@ -38,7 +42,7 @@ const selectedBranch = ref(
 );
 const branches = ref([...props.branches]);
 const refreshing = ref(false);
-const refreshError = ref('');
+const refreshError = ref(props.branchError ?? '');
 
 const form = useForm({
     branch: selectedBranch.value,
@@ -184,7 +188,7 @@ onUnmounted(() => {
                             </p>
                             <p
                                 v-if="refreshError"
-                                class="mt-1 text-xs text-red-600"
+                                class="mt-1 whitespace-pre-line break-words text-xs text-red-600"
                             >
                                 {{ refreshError }}
                             </p>

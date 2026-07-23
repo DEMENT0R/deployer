@@ -17,14 +17,19 @@ class DeployInstanceJob implements ShouldQueue
     public int $timeout;
 
     public function __construct(
-        public Deployment $deployment,
+        public int $deploymentId,
     ) {
         $this->timeout = config('deployer.job_timeout', 900);
     }
 
     public function handle(InstanceDeployer $deployer): void
     {
-        $deployment = $this->deployment->fresh(['instance']);
+        $deployment = Deployment::with('instance')->find($this->deploymentId);
+
+        if (! $deployment || ! $deployment->instance) {
+            return;
+        }
+
         $instance = $deployment->instance;
 
         $lock = Cache::lock("deploy:instance:{$instance->id}", $this->timeout);
