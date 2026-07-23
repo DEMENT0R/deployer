@@ -1,81 +1,218 @@
 # Deployer Panel
 
-Laravel-based deployment panel for managing staging instances of other Laravel projects.
+Веб-панель для полуавтоматического развёртывания фича-веток на тестовые инстансы.
 
-## Features
+Тестировщик открывает инстанс, выбирает ветку из списка, подтянутого с git-remote, и жмёт кнопку.
+Панель выполняет шаги `git` / `composer` / `migrate` / `frontend` в каталоге целевого проекта через
+воркер очереди и стримит вывод обратно на страницу.
 
-- Instance registry with per-project deploy commands
-- Role-based access: **admin** (full control) and **tester** (assigned instances only)
-- Branch selection with git remote listing and refresh
-- Step-by-step deployments: git, composer, migrate, frontend
-- Deployment logs and progress via queue jobs
+Стек: Laravel 12, Inertia 2 + Vue 3, Tailwind, очередь на БД, по умолчанию SQLite.
 
-## Requirements
+## Как это работает
 
-- PHP 8.2+
-- Composer, Node.js, Git available in the PATH of the PHP/queue worker process
-- On Linux: target project paths must exist and be readable/writable by the queue worker user
-
-## Setup
-
-```bash
-composer install
-cp .env.example .env
-php artisan key:generate
-php artisan migrate
-php artisan db:seed
-npm install
-npm run build
+```
+браузер                  приложение                   воркер очереди            каталог проекта
+  |  выбор ветки  ------> BranchController ---------------------------------> git for-each-ref (кэш)
+  |  кнопка деплоя ─────> DeployController
+  |                        └─ Deployment (pending) ──> DeployInstanceJob
+  |                                                     └─ лок deploy:instance:{id}
+  |                                                     └─ InstanceDeployer ──> git / composer / migrate / npm
+  |  <-- поллинг 3с ------ deployment.status/steps/output <── чанки вывода
 ```
 
-## Configuration
+- **Instance** — развёрнутая копия какого-то проекта на диске (путь + git-remote + команды по шагам).
+- **Deployment** — один запуск: выбранное действие, ветка, статусы шагов, код возврата, полный вывод.
+- Одновременно на инстансе может идти только один деплой: контроллер отклоняет новый, пока есть запись
+  в статусе `pending`/`running`, а джоба дополнительно берёт кэш-лок (`deploy:instance:{id}`).
+- Эндпоинт деплоя ограничен 10 запросами в минуту на пользователя.
 
-| Variable | Description |
-|----------|-------------|
-| `DEPLOYER_ALLOWED_PATHS` | Comma-separated path prefixes allowed for instances (e.g. `/var/www`) |
-| `DEPLOYER_TIMEOUT` | Per-command timeout in seconds (default: 600) |
-| `DEPLOYER_BRANCH_CACHE_TTL` | Branch list cache TTL in seconds (default: 300) |
-| `DEPLOYER_JOB_TIMEOUT` | Queue job timeout in seconds (default: 900) |
+Git-шаг — ровно это:
 
-Per-instance settings (in admin UI):
+```
+git fetch --all
+git checkout <ветка>
+git pull <remote> <ветка>
+```
 
-- `composer_command` — optional, skipped if empty
-- `migrate_command` — default: `php artisan migrate --force`
-- `frontend_command` — default: `npm ci && npm run build`
+Список веток берётся из `git for-each-ref refs/remotes/<remote>/` и кэшируется на
+`DEPLOYER_BRANCH_CACHE_TTL`. Кнопка ↻ на странице инстанса выполняет `git fetch --all` и обновляет кэш;
+кэш также сбрасывается после успешного деплоя `full`/`branch`.
 
-## Running
+## Возможности
 
-Start the app and queue worker (development):
+- Реестр инстансов: путь, remote, ветка по умолчанию и свои команды на каждый шаг
+- Выбор ветки из списка с git-remote, с ручным обновлением
+- Четыре действия деплоя (полный / только ветка / миграции / фронтенд), выполняемые пошагово
+- Живой прогресс и лог на странице инстанса (поллинг 3с)
+- Разграничение прав: **admin** (всё) и **tester** (только назначенные инстансы)
+- Админский монитор очередей: джобы, упавшие джобы с retry/forget, активные и последние деплои (поллинг 5с)
+- Белый список путей и валидация имени ветки до запуска чего бы то ни было
+
+## Требования
+
+- PHP 8.2+
+- Composer, Node.js и Git в `PATH` процесса **воркера очереди** (команды выполняются именно там)
+- Каталоги целевых проектов доступны воркеру на чтение/запись
+- Git-креды доступны воркеру неинтерактивно (см. [Windows / OpenServer](#windows--openserver))
+
+## Установка
+
+```bash
+composer setup
+```
+
+`composer setup` = `composer install` + `.env` из `.env.example` + `key:generate` + `migrate` +
+`npm install` + `npm run build`. При дефолтном `DB_CONNECTION=sqlite` файл `database/database.sqlite`
+должен существовать до миграции (`touch database/database.sqlite`).
+
+Затем — начальные пользователи и демо-инстанс:
+
+```bash
+php artisan db:seed
+```
+
+## Запуск
+
+Разработка (сервер + воркер + логи + vite одной командой):
 
 ```bash
 composer dev
 ```
 
-Production:
+Отдельно:
 
 ```bash
 php artisan serve
+```
+
+```bash
 php artisan queue:work --timeout=900
 ```
 
-## Default users (after seeding)
+**Воркер очереди обязателен** — без него деплои навсегда остаются в `pending`. Держите
+`--timeout` не меньше `DEPLOYER_JOB_TIMEOUT`.
 
-| Email | Password | Role |
-|-------|----------|------|
+## Настройка
+
+Глобально, через `.env` (см. `config/deployer.php`):
+
+| Переменная | По умолчанию | Описание |
+|------------|--------------|----------|
+| `DEPLOYER_ALLOWED_PATHS` | `/var/www` | Префиксы путей через запятую, внутри которых обязан находиться путь инстанса. Windows-пути допустимы (`C:\OpenServer\domains\_php_8\`) |
+| `DEPLOYER_TIMEOUT` | `600` | Таймаут одной команды, секунды |
+| `DEPLOYER_BRANCH_CACHE_TTL` | `300` | TTL кэша списка веток, секунды |
+| `DEPLOYER_JOB_TIMEOUT` | `900` | Таймаут джобы, секунды (он же TTL лока деплоя) |
+| `DEPLOYER_GIT_USERPROFILE` | — | Каталог профиля, подставляемый как `USERPROFILE`/`HOME` для git-подпроцессов |
+| `DEPLOYER_GIT_TERMINAL_PROMPT` | `0` | `GIT_TERMINAL_PROMPT` для подпроцессов |
+| `DEPLOYER_GCM_INTERACTIVE` | `Never` | `GCM_INTERACTIVE` для Git Credential Manager |
+
+По инстансу, в **Admin → Instances**:
+
+| Поле | Примечание |
+|------|------------|
+| `name` | Отображаемое имя |
+| `path` | Абсолютный путь к развёрнутому проекту; должен пройти валидацию путей |
+| `platform` | `linux` / `windows` — только информационная метка, на способ запуска команд не влияет |
+| `git_remote` | По умолчанию `origin`; используется для списка веток и `git pull` |
+| `default_branch` | Подставляется в селект, если у рабочей копии нет текущей ветки |
+| `composer_command` | Необязательно — при пустом значении шаг composer **пропускается** |
+| `migrate_command` | По умолчанию `php artisan migrate --force` |
+| `frontend_command` | По умолчанию `npm ci && npm run build` |
+| `allowed_path_prefix` | Дополнительный разрешённый префикс для этого инстанса, поверх `DEPLOYER_ALLOWED_PATHS` |
+| `is_active` | Неактивные инстансы скрыты, деплой на них невозможен |
+| тестировщики | Кто из аккаунтов-тестировщиков видит инстанс и может на него деплоить |
+
+`composer_command`, `migrate_command` и `frontend_command` выполняются через системный шелл в каталоге
+инстанса, поэтому синтаксис шелла (`&&`, кавычки) работает. Админ может вписать туда произвольную команду —
+считайте админский доступ равносильным shell-доступу на хост.
+
+## Действия деплоя
+
+| Действие | Шаги | Нужна ветка |
+|----------|------|-------------|
+| Full deploy | git → composer → migrate → frontend | да |
+| Deploy branch | git | да |
+| Migrate | migrate | нет |
+| Build frontend | frontend | нет |
+
+Каждый шаг проходит `pending` → `running` → `success` / `failed` (composer получает `skipped`, если команда
+пустая). На первой ошибке оставшиеся шаги не выполняются, деплой переходит в `failed`, текст ошибки
+дописывается в лог.
+
+## Роли и доступ
+
+| Email | Пароль | Роль |
+|-------|--------|------|
 | admin@local | password | admin |
 | tester@local | password | tester |
 
-Public registration is disabled. Admins create users via **Admin → Users**.
+(Значения из сидера — смените их.)
 
-## Deployment actions
+- **Admin**: все инстансы, CRUD инстансов и пользователей, монитор очередей.
+- **Tester**: только явно назначенные инстансы; может деплоить, но не может менять конфигурацию.
 
-| Action | Steps |
-|--------|-------|
-| Full deploy | git → composer → migrate → frontend |
-| Deploy branch | git only |
-| Migrate | migrate only |
-| Build frontend | frontend only |
+Публичная регистрация отключена (`/register` отдаёт 404). Пользователей создаёт админ в **Admin → Users**.
+Подтверждение email не требуется — по умолчанию `MAIL_MAILER=log`, а модель `User` не реализует
+`MustVerifyEmail`, поэтому созданный админом аккаунт может войти сразу.
 
-## License
+## Ограничения безопасности
+
+- **Валидация пути** (`PathValidator`): отклоняет пустые пути, любые с `..`, несуществующие каталоги и любой
+  реальный путь вне разрешённых префиксов. Отрабатывает перед каждым деплоем и каждым получением списка веток.
+- **Валидация ветки**: имя должно соответствовать `deployer.branch_pattern`
+  (`/^[a-zA-Z0-9_\/\.\-]+$/`), проверяется и в form request, и в `GitService`.
+- **Аргументы git** передаются массивом argv (без интерполяции шеллом).
+- **Параллелизм**: один деплой на инстанс одновременно (проверка в БД + кэш-лок).
+- **Рейт-лимит**: 10 запросов деплоя в минуту на пользователя.
+
+## Windows / OpenServer
+
+Деплои выполняются от пользователя PHP/воркера, у которого на Windows обычно нет своих git-кредов.
+Укажите нужный профиль:
+
+```
+DEPLOYER_GIT_USERPROFILE=C:\Users\YourUser
+```
+
+`GIT_TERMINAL_PROMPT=0` и `GCM_INTERACTIVE=Never` проставляются подпроцессам по умолчанию, чтобы при
+отсутствии кредов команда падала сразу, а не вешала воркер на невидимом запросе пароля.
+
+Не забудьте добавить Windows-корень в белый список, например:
+
+```
+DEPLOYER_ALLOWED_PATHS=/var/www,C:\OpenServer\domains\_php_8\
+```
+
+## Тесты
+
+```bash
+composer test
+```
+
+Покрыты авторизация и валидация деплоя, политики доступа к инстансам, защита админских маршрутов,
+страница очередей и `PathValidator`.
+
+## Структура проекта
+
+| Путь | Содержимое |
+|------|------------|
+| `app/Services/Deploy/` | `InstanceDeployer` (пайплайн шагов), `GitService`, `GitBranchResolver` (список веток + кэш), `PathValidator`, `ProcessRunner` |
+| `app/Jobs/DeployInstanceJob.php` | Джоба очереди: локи, переходы статусов |
+| `app/Services/QueueMonitorService.php` | Снимок состояния для админской страницы очередей |
+| `app/Enums/` | `DeployAction` (действие → шаги), `DeployStep`, `DeployStatus`, `UserRole`, `Platform` |
+| `resources/js/Pages/Instances/` | Выбор ветки, кнопки деплоя, прогресс и лог |
+| `resources/js/Pages/Admin/` | Инстансы, пользователи, очереди |
+| `config/deployer.php` | Все настройки, специфичные для деплоера |
+
+## Известные ограничения
+
+- Прогресс доставляется поллингом, без websockets/SSE; вывод дописывается в колонку `deployments.output`
+  на каждый чанк, поэтому «болтливые» команды дают много записей в БД.
+- Git-шаг не умеет работать с грязным рабочим деревом — локальные изменения в целевом проекте валят
+  `git checkout`, и деплой падает с сообщением самого git.
+- `platform` хранится, но пайплайном деплоя не используется.
+- Один remote на инстанс; отдельной работы с `.env` целевого проекта под ветку/окружение нет.
+
+## Лицензия
 
 MIT
