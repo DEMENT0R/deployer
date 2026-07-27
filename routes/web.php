@@ -32,6 +32,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('queues', [AdminQueueController::class, 'index'])->name('queues.index');
         Route::post('queues/failed/{uuid}/retry', [AdminQueueController::class, 'retry'])->name('queues.retry');
         Route::delete('queues/failed/{uuid}', [AdminQueueController::class, 'forget'])->name('queues.forget');
+        Route::get('instances/{instance}/env', [AdminInstanceController::class, 'env'])->name('instances.env');
         Route::resource('instances', AdminInstanceController::class)->except(['show']);
         Route::resource('users', AdminUserController::class)->except(['show']);
     });

@@ -8,6 +8,7 @@ use App\Http\Requests\Admin\StoreInstanceRequest;
 use App\Http\Requests\Admin\UpdateInstanceRequest;
 use App\Models\Instance;
 use App\Models\User;
+use App\Services\InstanceEnvService;
 use Illuminate\Http\RedirectResponse;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -30,6 +31,18 @@ class InstanceController extends Controller
 
         return Inertia::render('Admin/Instances/Index', [
             'instances' => $instances,
+        ]);
+    }
+
+    public function env(Instance $instance, InstanceEnvService $envService): Response
+    {
+        return Inertia::render('Admin/Instances/Env', [
+            'instance' => [
+                'id' => $instance->id,
+                'name' => $instance->name,
+                'path' => $instance->path,
+            ],
+            'env' => $envService->inspect($instance),
         ]);
     }
 

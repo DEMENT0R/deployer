@@ -29,4 +29,42 @@ return [
         'GIT_TERMINAL_PROMPT' => env('DEPLOYER_GIT_TERMINAL_PROMPT', '0'),
         'GCM_INTERACTIVE' => env('DEPLOYER_GCM_INTERACTIVE', 'Never'),
     ]),
+
+    /*
+    | Просмотр .env целевого проекта в админке. Наружу отдаются только ключи из
+    | env_visible_keys — остальные попадают в ответ лишь счётчиком. Значения ключей,
+    | подходящих под env_masked_patterns, маскируются до отправки в браузер.
+    */
+    'env_visible_keys' => [
+        'APP_NAME',
+        'APP_ENV',
+        'APP_KEY',
+        'APP_DEBUG',
+        'APP_URL',
+        'LOG_CHANNEL',
+        'LOG_LEVEL',
+        'DB_CONNECTION',
+        'DB_HOST',
+        'DB_PORT',
+        'DB_DATABASE',
+        'DB_USERNAME',
+        'DB_PASSWORD',
+        'CACHE_STORE',
+        'QUEUE_CONNECTION',
+        'SESSION_DRIVER',
+        'MAIL_MAILER',
+        'MAIL_HOST',
+        'MAIL_FROM_ADDRESS',
+    ],
+
+    'env_masked_patterns' => [
+        '*KEY*',
+        '*SECRET*',
+        '*PASSWORD*',
+        '*TOKEN*',
+        '*CREDENTIALS*',
+        '*_DSN',
+    ],
+
+    'env_max_size' => (int) env('DEPLOYER_ENV_MAX_SIZE', 262144),
 ];

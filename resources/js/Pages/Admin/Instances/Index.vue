@@ -54,6 +54,12 @@ const destroy = (id) => {
                                 <td class="px-4 py-3 text-sm text-gray-500">{{ instance.is_active ? 'Yes' : 'No' }}</td>
                                 <td class="px-4 py-3 text-right text-sm">
                                     <Link
+                                        :href="route('admin.instances.env', instance.id)"
+                                        class="me-4 text-indigo-600 hover:text-indigo-800"
+                                    >
+                                        Env
+                                    </Link>
+                                    <Link
                                         :href="route('admin.instances.edit', instance.id)"
                                         class="text-indigo-600 hover:text-indigo-800"
                                     >
