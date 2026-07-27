@@ -11,6 +11,12 @@ return [
 
     'branch_cache_ttl' => (int) env('DEPLOYER_BRANCH_CACHE_TTL', 300),
 
+    /*
+    | Прятать локальные изменения целевого проекта в stash перед checkout,
+    | иначе git роняет шаг. Изменения не теряются — лежат в `git stash list`.
+    */
+    'auto_stash' => (bool) env('DEPLOYER_AUTO_STASH', true),
+
     'job_timeout' => (int) env('DEPLOYER_JOB_TIMEOUT', 900),
 
     /*

@@ -28,8 +28,52 @@ class GitService
         $this->validateBranch($branch);
 
         $this->runner->runOrFail(['git', 'fetch', '--all'], $cwd, $onOutput);
+
+        if (config('deployer.auto_stash', true)) {
+            $this->stashLocalChanges($cwd, $onOutput);
+        }
+
         $this->runner->runOrFail(['git', 'checkout', $branch], $cwd, $onOutput);
         $this->runner->runOrFail(['git', 'pull', $remote, $branch], $cwd, $onOutput);
+    }
+
+    /**
+     * Локальные изменения в целевом проекте валят checkout/pull. Прячем их в stash,
+     * а не сбрасываем: изменения остаются доступны через `git stash list` в проекте.
+     * Untracked включаем (они тоже мешают checkout), а вот ignored — нет: там лежат
+     * .env, vendor, node_modules целевого проекта.
+     */
+    private function stashLocalChanges(string $cwd, ?Closure $onOutput = null): void
+    {
+        if (! $this->isDirty($cwd)) {
+            return;
+        }
+
+        if ($onOutput) {
+            $onOutput("\n[deployer] Обнаружены локальные изменения, прячем в stash.\n");
+        }
+
+        $this->runner->runOrFail(
+            ['git', 'stash', 'push', '--include-untracked', '--message', 'deployer auto-stash '.now()->toDateTimeString()],
+            $cwd,
+            $onOutput,
+        );
+    }
+
+    private function isDirty(string $cwd): bool
+    {
+        $result = $this->runner->run(
+            ['git', 'status', '--porcelain'],
+            $cwd,
+            null,
+            30,
+        );
+
+        if (! $result->successful) {
+            throw new GitException($result->combinedOutput() ?: 'Failed to read git status.');
+        }
+
+        return trim($result->output) !== '';
     }
 
     public function fetchAll(string $cwd, ?Closure $onOutput = null): void

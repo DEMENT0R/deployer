@@ -30,9 +30,14 @@ Git-шаг — ровно это:
 
 ```
 git fetch --all
+git stash push --include-untracked --message "deployer auto-stash <время>"   # если рабочее дерево грязное
 git checkout <ветка>
 git pull <remote> <ветка>
 ```
+
+Stash делается только при непустом `git status --porcelain` и отключается через `DEPLOYER_AUTO_STASH=false`.
+Изменения не теряются — лежат в `git stash list` целевого проекта, забрать можно `git stash pop`.
+Игнорируемые файлы (`.env`, `vendor`, `node_modules` целевого проекта) не трогаются.
 
 Список веток берётся из `git for-each-ref refs/remotes/<remote>/` и кэшируется на
 `DEPLOYER_BRANCH_CACHE_TTL`. Кнопка ↻ на странице инстанса выполняет `git fetch --all` и обновляет кэш;
@@ -101,6 +106,7 @@ php artisan queue:work --timeout=900
 | `DEPLOYER_ALLOWED_PATHS` | `/var/www` | Префиксы путей через запятую, внутри которых обязан находиться путь инстанса. Windows-пути допустимы (`C:\OpenServer\domains\_php_8\`) |
 | `DEPLOYER_TIMEOUT` | `600` | Таймаут одной команды, секунды |
 | `DEPLOYER_BRANCH_CACHE_TTL` | `300` | TTL кэша списка веток, секунды |
+| `DEPLOYER_AUTO_STASH` | `true` | Прятать локальные изменения целевого проекта в stash перед `git checkout` |
 | `DEPLOYER_JOB_TIMEOUT` | `900` | Таймаут джобы, секунды (он же TTL лока деплоя) |
 | `DEPLOYER_GIT_USERPROFILE` | — | Каталог профиля, подставляемый как `USERPROFILE`/`HOME` для git-подпроцессов |
 | `DEPLOYER_GIT_TERMINAL_PROMPT` | `0` | `GIT_TERMINAL_PROMPT` для подпроцессов |
@@ -222,8 +228,8 @@ composer test
 
 - Прогресс доставляется поллингом, без websockets/SSE; вывод дописывается в колонку `deployments.output`
   на каждый чанк, поэтому «болтливые» команды дают много записей в БД.
-- Git-шаг не умеет работать с грязным рабочим деревом — локальные изменения в целевом проекте валят
-  `git checkout`, и деплой падает с сообщением самого git.
+- Грязное рабочее дерево уходит в stash автоматически, но стопка stash'ей в целевом проекте
+  никогда не разбирается — за `git stash list` следит человек.
 - `platform` хранится, но пайплайном деплоя не используется.
 - Один remote на инстанс; отдельной работы с `.env` целевого проекта под ветку/окружение нет.
 
