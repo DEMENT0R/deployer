@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\BranchController;
 use App\Http\Controllers\DeployController;
 use App\Http\Controllers\InstanceController;
+use App\Http\Controllers\InstanceHealthController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
 
@@ -18,6 +19,9 @@ Route::get('/', function () {
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/instances', [InstanceController::class, 'index'])->name('instances.index');
     Route::get('/instances/{instance}', [InstanceController::class, 'show'])->name('instances.show');
+    Route::get('/instances/{instance}/health', [InstanceHealthController::class, 'show'])
+        ->middleware('throttle:30,1')
+        ->name('instances.health');
     Route::get('/instances/{instance}/branches', [BranchController::class, 'index'])->name('instances.branches.index');
     Route::post('/instances/{instance}/branches/refresh', [BranchController::class, 'refresh'])->name('instances.branches.refresh');
     Route::post('/instances/{instance}/deploy', [DeployController::class, 'store'])

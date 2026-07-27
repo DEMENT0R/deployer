@@ -31,16 +31,18 @@ defineProps({
                 </div>
 
                 <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                    <Link
+                    <div
                         v-for="instance in instances"
                         :key="instance.id"
-                        :href="route('instances.show', instance.id)"
-                        class="block rounded-lg border border-gray-200 bg-white p-5 shadow-sm transition hover:border-gray-300 hover:shadow"
+                        class="rounded-lg border border-gray-200 bg-white p-5 shadow-sm transition hover:border-gray-300 hover:shadow"
                     >
                         <div class="mb-2 flex items-start justify-between gap-2">
-                            <h3 class="font-medium text-gray-900">
+                            <Link
+                                :href="route('instances.show', instance.id)"
+                                class="font-medium text-gray-900 hover:text-indigo-700"
+                            >
                                 {{ instance.name }}
-                            </h3>
+                            </Link>
                             <DeployStatusBadge
                                 v-if="instance.latest_deployment"
                                 :status="instance.latest_deployment.status"
@@ -58,7 +60,16 @@ defineProps({
                                 ({{ instance.latest_deployment.branch }})
                             </span>
                         </p>
-                    </Link>
+                        <a
+                            v-if="instance.url"
+                            :href="instance.url"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            class="mt-3 inline-block truncate text-xs font-medium text-indigo-600 hover:text-indigo-800"
+                        >
+                            {{ instance.url }} ↗
+                        </a>
+                    </div>
                 </div>
             </div>
         </div>

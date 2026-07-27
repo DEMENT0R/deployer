@@ -41,6 +41,7 @@ const destroy = (id) => {
                             <tr>
                                 <th class="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Name</th>
                                 <th class="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Path</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">URL</th>
                                 <th class="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Testers</th>
                                 <th class="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Active</th>
                                 <th class="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">Actions</th>
@@ -50,6 +51,18 @@ const destroy = (id) => {
                             <tr v-for="instance in instances" :key="instance.id">
                                 <td class="px-4 py-3 text-sm font-medium text-gray-900">{{ instance.name }}</td>
                                 <td class="px-4 py-3 text-sm text-gray-500">{{ instance.path }}</td>
+                                <td class="px-4 py-3 text-sm">
+                                    <a
+                                        v-if="instance.url"
+                                        :href="instance.url"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        class="text-indigo-600 hover:text-indigo-800"
+                                    >
+                                        {{ instance.url }}
+                                    </a>
+                                    <span v-else class="text-gray-400">—</span>
+                                </td>
                                 <td class="px-4 py-3 text-sm text-gray-500">{{ instance.users_count }}</td>
                                 <td class="px-4 py-3 text-sm text-gray-500">{{ instance.is_active ? 'Yes' : 'No' }}</td>
                                 <td class="px-4 py-3 text-right text-sm">

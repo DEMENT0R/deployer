@@ -67,4 +67,10 @@ return [
     ],
 
     'env_max_size' => (int) env('DEPLOYER_ENV_MAX_SIZE', 262144),
+
+    /*
+    | Таймаут health-пинга URL инстанса. Держим коротким: запрос синхронный,
+    | его ждёт открытая страница инстанса.
+    */
+    'health_timeout' => (int) env('DEPLOYER_HEALTH_TIMEOUT', 5),
 ];

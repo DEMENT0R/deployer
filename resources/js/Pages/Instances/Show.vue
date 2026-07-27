@@ -1,12 +1,15 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import DeployLog from '@/Components/DeployLog.vue';
+import DeploymentHistory from '@/Components/DeploymentHistory.vue';
 import DeployStatusBadge from '@/Components/DeployStatusBadge.vue';
 import DeployStepProgress from '@/Components/DeployStepProgress.vue';
+import HealthBadge from '@/Components/HealthBadge.vue';
+import InstanceGitStatus from '@/Components/InstanceGitStatus.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
 import InputError from '@/Components/InputError.vue';
-import { Head, router, useForm, usePage } from '@inertiajs/vue3';
+import { Deferred, Head, router, useForm, usePage } from '@inertiajs/vue3';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import axios from 'axios';
 
@@ -28,6 +31,14 @@ const props = defineProps({
         default: null,
     },
     deployment: {
+        type: Object,
+        default: null,
+    },
+    deployments: {
+        type: Array,
+        default: () => [],
+    },
+    gitStatus: {
         type: Object,
         default: null,
     },
@@ -87,6 +98,32 @@ const refreshBranches = async () => {
     }
 };
 
+const health = ref(null);
+const healthChecking = ref(false);
+
+const checkHealth = async () => {
+    if (!props.instance.url || healthChecking.value) return;
+
+    healthChecking.value = true;
+
+    try {
+        const { data } = await axios.get(
+            route('instances.health', props.instance.id),
+        );
+        health.value = data;
+    } catch (error) {
+        health.value = {
+            status: 'unreachable',
+            message:
+                error.response?.data?.message ?? 'Health check request failed.',
+            code: null,
+            duration_ms: null,
+        };
+    } finally {
+        healthChecking.value = false;
+    }
+};
+
 let pollInterval = null;
 
 const startPolling = () => {
@@ -109,11 +146,19 @@ const stopPolling = () => {
 
 watch(
     () => props.deployment?.status,
-    (status) => {
+    (status, previous) => {
         if (status === 'running' || status === 'pending') {
             startPolling();
-        } else {
-            stopPolling();
+
+            return;
+        }
+
+        stopPolling();
+
+        // Деплой только что закончился: рабочее дерево и история устарели, стенд перезапустился.
+        if (previous === 'running' || previous === 'pending') {
+            router.reload({ only: ['gitStatus', 'deployments'] });
+            checkHealth();
         }
     },
     { immediate: true },
@@ -123,6 +168,8 @@ onMounted(() => {
     if (isRunning.value) {
         startPolling();
     }
+
+    checkHealth();
 });
 
 onUnmounted(() => {
@@ -135,11 +182,31 @@ onUnmounted(() => {
 
     <AuthenticatedLayout>
         <template #header>
-            <div>
-                <h2 class="text-xl font-semibold leading-tight text-gray-800">
-                    {{ instance.name }}
-                </h2>
-                <p class="mt-1 text-sm text-gray-500">{{ instance.path }}</p>
+            <div class="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                    <h2 class="text-xl font-semibold leading-tight text-gray-800">
+                        {{ instance.name }}
+                    </h2>
+                    <p class="mt-1 text-sm text-gray-500">{{ instance.path }}</p>
+                </div>
+                <div v-if="instance.url" class="flex items-center gap-3">
+                    <HealthBadge :health="health" :checking="healthChecking" />
+                    <SecondaryButton
+                        type="button"
+                        :disabled="healthChecking"
+                        @click="checkHealth"
+                    >
+                        {{ healthChecking ? '…' : '↻' }}
+                    </SecondaryButton>
+                    <a
+                        :href="instance.url"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="text-sm font-medium text-indigo-600 hover:text-indigo-800"
+                    >
+                        Open ↗
+                    </a>
+                </div>
             </div>
         </template>
 
@@ -246,6 +313,18 @@ onUnmounted(() => {
 
                     <DeployLog :output="deployment.output" />
                 </div>
+
+                <Deferred data="gitStatus">
+                    <template #fallback>
+                        <div class="rounded-lg bg-white p-6 text-sm text-gray-500 shadow-sm">
+                            Reading the working tree…
+                        </div>
+                    </template>
+
+                    <InstanceGitStatus :status="gitStatus" />
+                </Deferred>
+
+                <DeploymentHistory :deployments="deployments" />
             </div>
         </div>
     </AuthenticatedLayout>

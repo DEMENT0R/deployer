@@ -25,6 +25,7 @@ class InstanceController extends Controller
                 'id' => $instance->id,
                 'name' => $instance->name,
                 'path' => $instance->path,
+                'url' => $instance->url,
                 'is_active' => $instance->is_active,
                 'users_count' => $instance->users_count,
             ]);
@@ -76,6 +77,7 @@ class InstanceController extends Controller
                 'id' => $instance->id,
                 'name' => $instance->name,
                 'path' => $instance->path,
+                'url' => $instance->url,
                 'platform' => $instance->platform->value,
                 'git_remote' => $instance->git_remote,
                 'default_branch' => $instance->default_branch,

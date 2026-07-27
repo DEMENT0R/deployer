@@ -17,6 +17,8 @@ class StoreInstanceRequest extends FormRequest
     {
         $this->merge([
             'is_active' => $this->boolean('is_active'),
+            // Пустое поле формы приходит строкой и валится на правиле url — считаем его «не задано».
+            'url' => filled($this->input('url')) ? trim((string) $this->input('url')) : null,
         ]);
     }
 
@@ -36,6 +38,7 @@ class StoreInstanceRequest extends FormRequest
         return [
             'name' => ['required', 'string', 'max:255'],
             'path' => ['required', 'string', 'max:1024'],
+            'url' => ['nullable', 'string', 'max:1024', 'url:http,https'],
             'platform' => ['required', Rule::enum(Platform::class)],
             'git_remote' => ['required', 'string', 'max:255'],
             'default_branch' => ['required', 'string', 'max:255', 'regex:'.config('deployer.branch_pattern')],

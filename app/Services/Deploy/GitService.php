@@ -62,6 +62,16 @@ class GitService
 
     private function isDirty(string $cwd): bool
     {
+        return $this->statusLines($cwd) !== [];
+    }
+
+    /**
+     * Порционный `git status` целевого проекта: по строке на изменённый файл.
+     *
+     * @return list<string>
+     */
+    public function statusLines(string $cwd): array
+    {
         $result = $this->runner->run(
             ['git', 'status', '--porcelain'],
             $cwd,
@@ -73,7 +83,7 @@ class GitService
             throw new GitException($result->combinedOutput() ?: 'Failed to read git status.');
         }
 
-        return trim($result->output) !== '';
+        return $this->nonEmptyLines($result->output);
     }
 
     public function fetchAll(string $cwd, ?Closure $onOutput = null): void
@@ -127,5 +137,94 @@ class GitService
         $branch = trim($result->output);
 
         return $branch !== '' && $branch !== 'HEAD' ? $branch : null;
+    }
+
+    /**
+     * Разделитель полей — \x1f: он не встречается ни в теме коммита, ни в имени автора.
+     *
+     * @return array{sha: string, short_sha: string, subject: string, author: string, committed_at: ?string}|null
+     */
+    public function headCommit(string $cwd): ?array
+    {
+        $result = $this->runner->run(
+            ['git', 'log', '-1', '--format=%H%x1f%h%x1f%s%x1f%an%x1f%cI'],
+            $cwd,
+            null,
+            30,
+        );
+
+        // Свежий репозиторий без коммитов — не ошибка, просто нечего показывать.
+        if (! $result->successful) {
+            return null;
+        }
+
+        $parts = explode("\x1f", trim($result->output));
+
+        if (count($parts) < 5 || $parts[0] === '') {
+            return null;
+        }
+
+        return [
+            'sha' => $parts[0],
+            'short_sha' => $parts[1],
+            'subject' => $parts[2],
+            'author' => $parts[3],
+            'committed_at' => $parts[4] !== '' ? $parts[4] : null,
+        ];
+    }
+
+    /**
+     * Насколько рабочее дерево разошлось с remote-tracking веткой. Считается по локальным
+     * ссылкам: цифры настолько свежи, насколько свеж последний fetch.
+     *
+     * @return array{ahead: int, behind: int}|null
+     */
+    public function divergence(string $cwd, string $remote, string $branch): ?array
+    {
+        $this->validateBranch($branch);
+
+        $result = $this->runner->run(
+            ['git', 'rev-list', '--left-right', '--count', "HEAD...{$remote}/{$branch}"],
+            $cwd,
+            null,
+            30,
+        );
+
+        // Ветки нет на remote (или fetch ни разу не проходил) — сравнивать не с чем.
+        if (! $result->successful || ! preg_match('/^(\d+)\s+(\d+)$/', trim($result->output), $matches)) {
+            return null;
+        }
+
+        return [
+            'ahead' => (int) $matches[1],
+            'behind' => (int) $matches[2],
+        ];
+    }
+
+    public function stashCount(string $cwd): ?int
+    {
+        $result = $this->runner->run(
+            ['git', 'stash', 'list'],
+            $cwd,
+            null,
+            30,
+        );
+
+        if (! $result->successful) {
+            return null;
+        }
+
+        return count($this->nonEmptyLines($result->output));
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function nonEmptyLines(string $output): array
+    {
+        return array_values(array_filter(
+            array_map('trim', preg_split('/\R/', trim($output)) ?: []),
+            fn (string $line) => $line !== '',
+        ));
     }
 }

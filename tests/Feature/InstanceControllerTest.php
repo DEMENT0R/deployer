@@ -2,7 +2,10 @@
 
 namespace Tests\Feature;
 
+use App\Enums\DeployAction;
+use App\Enums\DeployStatus;
 use App\Enums\UserRole;
+use App\Models\Deployment;
 use App\Models\Instance;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -25,5 +28,69 @@ class InstanceControllerTest extends TestCase
                 ->where('branches', [])
                 ->whereNot('branchError', null)
             );
+    }
+
+    public function test_show_lists_deployment_history_newest_first(): void
+    {
+        $admin = User::factory()->create(['role' => UserRole::Admin, 'name' => 'Ada']);
+        $instance = Instance::factory()->create(['path' => '/var/www/does-not-exist']);
+
+        $older = $this->deployment($instance, $admin, 'main', DeployStatus::Success);
+        $older->update([
+            'started_at' => now()->subMinutes(10),
+            'finished_at' => now()->subMinutes(8),
+            'output' => 'secret build log',
+        ]);
+
+        $newer = $this->deployment($instance, $admin, 'feature/x', DeployStatus::Failed);
+        $newer->update(['exit_code' => 1]);
+
+        $this->actingAs($admin)
+            ->get(route('instances.show', $instance))
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->has('deployments', 2)
+                ->where('deployments.0.branch', 'feature/x')
+                ->where('deployments.0.status', 'failed')
+                ->where('deployments.0.exit_code', 1)
+                ->where('deployments.1.branch', 'main')
+                ->where('deployments.1.user', 'Ada')
+                ->where('deployments.1.duration_seconds', 120)
+                // Логи в историю не тянем: там столько текста, сколько выдал деплой.
+                ->missing('deployments.1.output')
+            );
+    }
+
+    public function test_show_defers_the_working_tree_snapshot(): void
+    {
+        $admin = User::factory()->create(['role' => UserRole::Admin]);
+        $instance = Instance::factory()->create(['path' => '/var/www/does-not-exist']);
+
+        // Первый заход отдаёт страницу без git-статуса — он приезжает отдельным запросом.
+        $response = $this->actingAs($admin)->get(route('instances.show', $instance));
+
+        $response->assertInertia(fn (AssertableInertia $page) => $page->missing('gitStatus'));
+
+        // Дозапрос отдаёт JSON, а не страницу, поэтому проверяем тело напрямую.
+        $this->actingAs($admin)
+            ->get(route('instances.show', $instance), [
+                'X-Inertia' => 'true',
+                'X-Inertia-Version' => $response->viewData('page')['version'],
+                'X-Inertia-Partial-Component' => 'Instances/Show',
+                'X-Inertia-Partial-Data' => 'gitStatus',
+            ])
+            ->assertOk()
+            ->assertJsonPath('props.gitStatus.status', 'path_error')
+            ->assertJsonMissingPath('props.deployment');
+    }
+
+    private function deployment(Instance $instance, User $user, string $branch, DeployStatus $status): Deployment
+    {
+        return Deployment::create([
+            'instance_id' => $instance->id,
+            'user_id' => $user->id,
+            'branch' => $branch,
+            'action' => DeployAction::Full,
+            'status' => $status,
+        ]);
     }
 }

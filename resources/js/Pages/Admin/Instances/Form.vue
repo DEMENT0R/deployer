@@ -23,6 +23,7 @@ const isEdit = !!props.instance;
 const form = useForm({
     name: props.instance?.name ?? '',
     path: props.instance?.path ?? '',
+    url: props.instance?.url ?? '',
     platform: props.instance?.platform ?? 'linux',
     git_remote: props.instance?.git_remote ?? 'origin',
     default_branch: props.instance?.default_branch ?? 'main',
@@ -78,6 +79,21 @@ const toggleTester = (id) => {
                         <InputLabel for="path" value="Path" />
                         <TextInput id="path" v-model="form.path" class="mt-1 block w-full" required />
                         <InputError class="mt-2" :message="form.errors.path" />
+                    </div>
+
+                    <div>
+                        <InputLabel for="url" value="URL" />
+                        <TextInput
+                            id="url"
+                            v-model="form.url"
+                            type="url"
+                            class="mt-1 block w-full"
+                            placeholder="https://stage.example.com"
+                        />
+                        <p class="mt-1 text-xs text-gray-500">
+                            Where the deployed instance is reachable. Shown as a link and pinged for health.
+                        </p>
+                        <InputError class="mt-2" :message="form.errors.url" />
                     </div>
 
                     <div class="grid gap-4 sm:grid-cols-2">

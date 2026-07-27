@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\Platform;
+use Database\Factories\InstanceFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -10,12 +11,13 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Instance extends Model
 {
-    /** @use HasFactory<\Database\Factories\InstanceFactory> */
+    /** @use HasFactory<InstanceFactory> */
     use HasFactory;
 
     protected $fillable = [
         'name',
         'path',
+        'url',
         'platform',
         'git_remote',
         'default_branch',
