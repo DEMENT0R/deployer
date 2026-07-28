@@ -1,6 +1,5 @@
 <script setup>
 import { ref } from 'vue';
-import ApplicationLogo from '@/Components/ApplicationLogo.vue';
 import Dropdown from '@/Components/Dropdown.vue';
 import DropdownLink from '@/Components/DropdownLink.vue';
 import NavLink from '@/Components/NavLink.vue';
@@ -20,12 +19,13 @@ const showingNavigationDropdown = ref(false);
                 <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                     <div class="flex h-16 justify-between">
                         <div class="flex">
-                            <!-- Logo -->
+                            <!-- App name -->
                             <div class="flex shrink-0 items-center">
-                                <Link :href="route('instances.index')">
-                                    <ApplicationLogo
-                                        class="block h-9 w-auto fill-current text-gray-800"
-                                    />
+                                <Link
+                                    :href="route('instances.index')"
+                                    class="text-lg font-semibold text-gray-800"
+                                >
+                                    {{ $page.props.appName }}
                                 </Link>
                             </div>
 
