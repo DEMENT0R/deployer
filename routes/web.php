@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\QueueController as AdminQueueController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\BranchController;
 use App\Http\Controllers\DeployController;
+use App\Http\Controllers\DeploymentController;
 use App\Http\Controllers\InstanceController;
 use App\Http\Controllers\InstanceHealthController;
 use App\Http\Controllers\ProfileController;
@@ -27,6 +28,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/instances/{instance}/deploy', [DeployController::class, 'store'])
         ->middleware('throttle:10,1')
         ->name('instances.deploy');
+
+    // scopeBindings: деплой ищется среди деплоев этого инстанса, чужой id даёт 404.
+    Route::scopeBindings()->group(function () {
+        Route::get('/instances/{instance}/deployments/{deployment}', [DeploymentController::class, 'show'])
+            ->name('instances.deployments.show');
+        Route::post('/instances/{instance}/deployments/{deployment}/cancel', [DeploymentController::class, 'cancel'])
+            ->name('instances.deployments.cancel');
+    });
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');

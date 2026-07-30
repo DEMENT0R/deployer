@@ -20,6 +20,20 @@ return [
     'job_timeout' => (int) env('DEPLOYER_JOB_TIMEOUT', 900),
 
     /*
+    | Через сколько секунд без единой записи в БД считать деплой брошенным.
+    | Убитый воркер оставляет строку в running навсегда, а она блокирует запуск
+    | новых деплоев по инстансу. Живой деплой пишет лог и трогает updated_at,
+    | а на job_timeout его в любом случае снимает очередь — поэтому берём с запасом.
+    */
+    'stale_after' => (int) env('DEPLOYER_STALE_AFTER', 960),
+
+    /*
+    | Сколько секунд деплой может простоять в pending, прежде чем страница
+    | предположит, что queue:work не запущен.
+    */
+    'queue_warn_after' => (int) env('DEPLOYER_QUEUE_WARN_AFTER', 15),
+
+    /*
     | Git environment for subprocesses (fetch, pull, etc.).
     | On Windows/OpenServer, set DEPLOYER_GIT_USERPROFILE so git can find stored credentials.
     */

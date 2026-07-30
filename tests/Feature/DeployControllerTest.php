@@ -98,6 +98,36 @@ class DeployControllerTest extends TestCase
         Queue::assertNothingPushed();
     }
 
+    public function test_abandoned_deploy_does_not_block_a_new_one(): void
+    {
+        Queue::fake();
+
+        $admin = User::factory()->create(['role' => UserRole::Admin]);
+        $instance = Instance::factory()->create();
+
+        $abandoned = Deployment::create([
+            'instance_id' => $instance->id,
+            'user_id' => $admin->id,
+            'branch' => 'main',
+            'action' => DeployAction::Full,
+            'status' => DeployStatus::Running,
+        ]);
+
+        // Воркера убили: строка осталась в running и с тех пор не обновлялась.
+        $abandoned->forceFill([
+            'updated_at' => now()->subSeconds(Deployment::staleAfter() + 60),
+        ])->saveQuietly();
+
+        $this->actingAs($admin)
+            ->post(route('instances.deploy', $instance), [
+                'action' => DeployAction::Migrate->value,
+            ])
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        Queue::assertPushed(DeployInstanceJob::class);
+    }
+
     public function test_migrate_action_does_not_require_branch(): void
     {
         Queue::fake();

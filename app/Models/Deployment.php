@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\DeployAction;
 use App\Enums\DeployStatus;
 use App\Enums\DeployStep;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -49,6 +50,45 @@ class Deployment extends Model
     public function isRunning(): bool
     {
         return $this->status === DeployStatus::Running;
+    }
+
+    /**
+     * Незавершённый деплой, который ещё подаёт признаки жизни. Такой держит
+     * инстанс занятым; брошенные (см. isStale) не держат — иначе убитый воркер
+     * запирал бы инстанс до ручной правки в БД.
+     *
+     * @param  Builder<Deployment>  $query
+     */
+    public function scopeActive(Builder $query): void
+    {
+        $query->whereIn('status', [DeployStatus::Pending, DeployStatus::Running])
+            ->where('updated_at', '>=', now()->subSeconds(self::staleAfter()));
+    }
+
+    public function isStale(): bool
+    {
+        if (! in_array($this->status, [DeployStatus::Pending, DeployStatus::Running], true)) {
+            return false;
+        }
+
+        return $this->updated_at !== null
+            && $this->updated_at->lt(now()->subSeconds(self::staleAfter()));
+    }
+
+    /** Сколько секунд деплой ещё живой, если о нём ничего не слышно. */
+    public static function staleAfter(): int
+    {
+        return max(1, (int) config('deployer.stale_after', 960));
+    }
+
+    /** Сколько деплой ждёт воркера; null — если он уже не в очереди. */
+    public function queuedSeconds(): ?int
+    {
+        if ($this->status !== DeployStatus::Pending || $this->created_at === null) {
+            return null;
+        }
+
+        return (int) $this->created_at->diffInSeconds(now());
     }
 
     /**

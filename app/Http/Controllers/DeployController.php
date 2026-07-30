@@ -25,9 +25,9 @@ class DeployController extends Controller
         }
 
         try {
-            $hasRunning = $instance->deployments()
-                ->whereIn('status', [DeployStatus::Pending, DeployStatus::Running])
-                ->exists();
+            // active(), а не просто статус: брошенная воркером строка иначе запирает
+            // инстанс навсегда. От реальной гонки страхует кэш-лок в джобе.
+            $hasRunning = $instance->deployments()->active()->exists();
 
             if ($hasRunning) {
                 return back()->withErrors(['deploy' => 'A deployment is already in progress for this instance.']);

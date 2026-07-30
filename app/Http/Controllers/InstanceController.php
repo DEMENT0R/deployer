@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Enums\DeployStatus;
+use App\Http\Controllers\Concerns\FormatsDeployments;
 use App\Models\Deployment;
 use App\Models\Instance;
 use App\Services\Deploy\GitBranchResolver;
@@ -13,6 +13,8 @@ use Inertia\Response;
 
 class InstanceController extends Controller
 {
+    use FormatsDeployments;
+
     /** Сколько последних деплоев показывать в истории на странице инстанса. */
     private const HISTORY_LIMIT = 20;
 
@@ -51,10 +53,7 @@ class InstanceController extends Controller
             $branchError = trim($e->getMessage()) ?: 'Failed to load branches.';
         }
 
-        $activeDeployment = $instance->deployments()
-            ->whereIn('status', [DeployStatus::Running, DeployStatus::Pending])
-            ->latest()
-            ->first();
+        $activeDeployment = $instance->deployments()->active()->latest()->first();
 
         $latestDeployment = $instance->deployments()->latest()->first();
 
@@ -94,9 +93,7 @@ class InstanceController extends Controller
                 'exit_code' => $deployment->exit_code,
                 'started_at' => $deployment->started_at?->toIso8601String(),
                 'finished_at' => $deployment->finished_at?->toIso8601String(),
-                'duration_seconds' => $deployment->started_at && $deployment->finished_at
-                    ? (int) $deployment->started_at->diffInSeconds($deployment->finished_at)
-                    : null,
+                'duration_seconds' => $this->deploymentDuration($deployment),
             ])
             ->all();
     }
@@ -130,24 +127,6 @@ class InstanceController extends Controller
             'url' => $instance->url,
             'default_branch' => $instance->default_branch,
             'git_remote' => $instance->git_remote,
-        ];
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    public function formatDeployment(Deployment $deployment): array
-    {
-        return [
-            'id' => $deployment->id,
-            'branch' => $deployment->branch,
-            'action' => $deployment->action->value,
-            'status' => $deployment->status->value,
-            'current_step' => $deployment->current_step?->value,
-            'steps' => $deployment->steps ?? [],
-            'output' => $deployment->output,
-            'started_at' => $deployment->started_at?->toIso8601String(),
-            'finished_at' => $deployment->finished_at?->toIso8601String(),
         ];
     }
 }

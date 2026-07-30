@@ -6,7 +6,13 @@ defineProps({
         type: Array,
         default: () => [],
     },
+    selectedId: {
+        type: Number,
+        default: null,
+    },
 });
+
+const emit = defineEmits(['select']);
 
 const formatDate = (iso) => (iso ? new Date(iso).toLocaleString() : '—');
 
@@ -20,8 +26,11 @@ const formatDuration = (seconds) => {
 
 <template>
     <div class="overflow-hidden rounded-lg bg-white shadow-sm">
-        <div class="border-b border-gray-200 px-6 py-4 font-medium text-gray-900">
-            Recent deployments
+        <div class="flex items-baseline justify-between border-b border-gray-200 px-6 py-4">
+            <span class="font-medium text-gray-900">Recent deployments</span>
+            <span v-if="deployments.length" class="text-xs text-gray-500">
+                Click a row to see its log
+            </span>
         </div>
 
         <div
@@ -44,7 +53,15 @@ const formatDuration = (seconds) => {
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-200">
-                    <tr v-for="deployment in deployments" :key="deployment.id">
+                    <tr
+                        v-for="deployment in deployments"
+                        :key="deployment.id"
+                        class="cursor-pointer hover:bg-gray-50"
+                        :class="{ 'bg-indigo-50': deployment.id === selectedId }"
+                        tabindex="0"
+                        @click="emit('select', deployment)"
+                        @keydown.enter="emit('select', deployment)"
+                    >
                         <td class="whitespace-nowrap px-4 py-2 text-sm text-gray-500">
                             {{ formatDate(deployment.started_at ?? deployment.finished_at) }}
                         </td>

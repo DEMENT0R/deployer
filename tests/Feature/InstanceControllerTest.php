@@ -83,6 +83,42 @@ class InstanceControllerTest extends TestCase
             ->assertJsonMissingPath('props.deployment');
     }
 
+    public function test_show_marks_an_abandoned_deployment_as_stale(): void
+    {
+        $admin = User::factory()->create(['role' => UserRole::Admin]);
+        $instance = Instance::factory()->create(['path' => '/var/www/does-not-exist']);
+
+        $deployment = $this->deployment($instance, $admin, 'main', DeployStatus::Running);
+        $deployment->forceFill([
+            'updated_at' => now()->subSeconds(Deployment::staleAfter() + 60),
+        ])->saveQuietly();
+
+        $this->actingAs($admin)
+            ->get(route('instances.show', $instance))
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->where('deployment.status', 'running')
+                ->where('deployment.is_stale', true)
+            );
+    }
+
+    public function test_show_flags_a_deployment_stuck_in_the_queue(): void
+    {
+        $admin = User::factory()->create(['role' => UserRole::Admin]);
+        $instance = Instance::factory()->create(['path' => '/var/www/does-not-exist']);
+
+        $deployment = $this->deployment($instance, $admin, 'main', DeployStatus::Pending);
+        $deployment->forceFill([
+            'created_at' => now()->subSeconds((int) config('deployer.queue_warn_after') + 5),
+        ])->saveQuietly();
+
+        $this->actingAs($admin)
+            ->get(route('instances.show', $instance))
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->where('deployment.queue_stuck', true)
+                ->where('deployment.is_stale', false)
+            );
+    }
+
     private function deployment(Instance $instance, User $user, string $branch, DeployStatus $status): Deployment
     {
         return Deployment::create([

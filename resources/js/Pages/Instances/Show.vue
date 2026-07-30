@@ -6,8 +6,10 @@ import DeployStatusBadge from '@/Components/DeployStatusBadge.vue';
 import DeployStepProgress from '@/Components/DeployStepProgress.vue';
 import HealthBadge from '@/Components/HealthBadge.vue';
 import InstanceGitStatus from '@/Components/InstanceGitStatus.vue';
+import Modal from '@/Components/Modal.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
+import DangerButton from '@/Components/DangerButton.vue';
 import InputError from '@/Components/InputError.vue';
 import { Deferred, Head, router, useForm, usePage } from '@inertiajs/vue3';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
@@ -64,11 +66,39 @@ watch(selectedBranch, (value) => {
     form.branch = value;
 });
 
+// Брошенный деплой не считаем идущим: кнопки разблокированы, поллинг не нужен.
 const isRunning = computed(
+    () =>
+        !props.deployment?.is_stale &&
+        (props.deployment?.status === 'running' ||
+            props.deployment?.status === 'pending'),
+);
+
+const isStale = computed(() => props.deployment?.is_stale === true);
+
+const canCancel = computed(
     () =>
         props.deployment?.status === 'running' ||
         props.deployment?.status === 'pending',
 );
+
+const cancelling = ref(false);
+
+const cancelDeployment = () => {
+    cancelling.value = true;
+
+    router.post(
+        route('instances.deployments.cancel', [
+            props.instance.id,
+            props.deployment.id,
+        ]),
+        {},
+        {
+            preserveScroll: true,
+            onFinish: () => (cancelling.value = false),
+        },
+    );
+};
 
 const deploy = (action) => {
     form.action = action;
@@ -144,31 +174,55 @@ const stopPolling = () => {
     }
 };
 
+watch(isRunning, (running) => (running ? startPolling() : stopPolling()), {
+    immediate: true,
+});
+
 watch(
     () => props.deployment?.status,
     (status, previous) => {
-        if (status === 'running' || status === 'pending') {
-            startPolling();
-
-            return;
-        }
-
-        stopPolling();
-
         // Деплой только что закончился: рабочее дерево и история устарели, стенд перезапустился.
-        if (previous === 'running' || previous === 'pending') {
+        if (
+            status !== previous &&
+            (previous === 'running' || previous === 'pending')
+        ) {
             router.reload({ only: ['gitStatus', 'deployments'] });
             checkHealth();
         }
     },
-    { immediate: true },
 );
 
-onMounted(() => {
-    if (isRunning.value) {
-        startPolling();
-    }
+const logDeployment = ref(null);
+const logLoading = ref(false);
+const logError = ref('');
 
+const openLog = async (deployment) => {
+    logLoading.value = true;
+    logError.value = '';
+    logDeployment.value = { ...deployment, output: null };
+
+    try {
+        const { data } = await axios.get(
+            route('instances.deployments.show', [
+                props.instance.id,
+                deployment.id,
+            ]),
+        );
+        logDeployment.value = data;
+    } catch (error) {
+        logError.value =
+            error.response?.data?.message ?? 'Failed to load the deployment.';
+    } finally {
+        logLoading.value = false;
+    }
+};
+
+const closeLog = () => {
+    logDeployment.value = null;
+    logError.value = '';
+};
+
+onMounted(() => {
     checkHealth();
 });
 
@@ -301,8 +355,42 @@ onUnmounted(() => {
                 >
                     <div class="mb-4 flex items-center justify-between">
                         <h3 class="font-medium text-gray-900">Deployment</h3>
-                        <DeployStatusBadge :status="deployment.status" />
+                        <div class="flex items-center gap-3">
+                            <span
+                                v-if="isStale"
+                                class="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800"
+                            >
+                                Abandoned
+                            </span>
+                            <DeployStatusBadge :status="deployment.status" />
+                            <DangerButton
+                                v-if="canCancel"
+                                type="button"
+                                :disabled="cancelling"
+                                @click="cancelDeployment"
+                            >
+                                {{ cancelling ? '…' : 'Cancel' }}
+                            </DangerButton>
+                        </div>
                     </div>
+
+                    <p
+                        v-if="deployment.queue_stuck"
+                        class="mb-4 rounded-md bg-amber-50 px-4 py-3 text-sm text-amber-800"
+                    >
+                        Queued for {{ deployment.queued_seconds }}s and still not
+                        picked up — check that <code>php artisan queue:work</code>
+                        is running.
+                    </p>
+
+                    <p
+                        v-else-if="isStale"
+                        class="mb-4 rounded-md bg-amber-50 px-4 py-3 text-sm text-amber-800"
+                    >
+                        No sign of life from this deployment for a while — the
+                        worker probably died. The instance is no longer locked, so
+                        you can start a new deployment.
+                    </p>
 
                     <DeployStepProgress
                         v-if="deployment.steps"
@@ -311,7 +399,10 @@ onUnmounted(() => {
                         :current-step="deployment.current_step"
                     />
 
-                    <DeployLog :output="deployment.output" />
+                    <DeployLog
+                        :output="deployment.output"
+                        :filename="`deploy-${deployment.id}.log`"
+                    />
                 </div>
 
                 <Deferred data="gitStatus">
@@ -324,8 +415,69 @@ onUnmounted(() => {
                     <InstanceGitStatus :status="gitStatus" />
                 </Deferred>
 
-                <DeploymentHistory :deployments="deployments" />
+                <DeploymentHistory
+                    :deployments="deployments"
+                    :selected-id="logDeployment?.id ?? null"
+                    @select="openLog"
+                />
             </div>
         </div>
+
+        <Modal :show="logDeployment !== null" max-width="2xl" @close="closeLog">
+            <div v-if="logDeployment" class="p-6">
+                <div class="mb-4 flex items-start justify-between gap-4">
+                    <div>
+                        <h3 class="font-medium text-gray-900">
+                            {{ logDeployment.action }}
+                            <span class="font-mono text-sm text-gray-500">
+                                {{ logDeployment.branch ?? '—' }}
+                            </span>
+                        </h3>
+                        <p class="mt-1 text-xs text-gray-500">
+                            #{{ logDeployment.id }} ·
+                            {{ logDeployment.user ?? '—' }} ·
+                            {{
+                                logDeployment.started_at
+                                    ? new Date(
+                                          logDeployment.started_at,
+                                      ).toLocaleString()
+                                    : '—'
+                            }}
+                            <template v-if="logDeployment.exit_code">
+                                · exit {{ logDeployment.exit_code }}
+                            </template>
+                        </p>
+                    </div>
+                    <DeployStatusBadge :status="logDeployment.status" />
+                </div>
+
+                <DeployStepProgress
+                    v-if="logDeployment.steps"
+                    class="mb-4"
+                    :steps="logDeployment.steps"
+                    :current-step="logDeployment.current_step"
+                />
+
+                <p v-if="logError" class="mb-2 text-sm text-red-600">
+                    {{ logError }}
+                </p>
+
+                <p v-if="logLoading" class="text-sm text-gray-500">
+                    Loading the log…
+                </p>
+
+                <DeployLog
+                    v-else-if="!logError"
+                    :output="logDeployment.output"
+                    :filename="`deploy-${logDeployment.id}.log`"
+                />
+
+                <div class="mt-4 flex justify-end">
+                    <SecondaryButton type="button" @click="closeLog">
+                        Close
+                    </SecondaryButton>
+                </div>
+            </div>
+        </Modal>
     </AuthenticatedLayout>
 </template>
