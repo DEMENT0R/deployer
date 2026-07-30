@@ -46,6 +46,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('queues/failed/{uuid}/retry', [AdminQueueController::class, 'retry'])->name('queues.retry');
         Route::delete('queues/failed/{uuid}', [AdminQueueController::class, 'forget'])->name('queues.forget');
         Route::get('instances/{instance}/env', [AdminInstanceController::class, 'env'])->name('instances.env');
+        Route::get('instances/{instance}/duplicate', [AdminInstanceController::class, 'duplicate'])->name('instances.duplicate');
         Route::resource('instances', AdminInstanceController::class)->except(['show']);
         Route::resource('users', AdminUserController::class)->except(['show']);
     });

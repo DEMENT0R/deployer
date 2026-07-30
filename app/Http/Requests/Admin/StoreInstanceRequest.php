@@ -37,7 +37,13 @@ class StoreInstanceRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'max:255'],
-            'path' => ['required', 'string', 'max:1024'],
+            // Два инстанса на одном каталоге затирают деплой друг друга — путь уникален.
+            'path' => [
+                'required',
+                'string',
+                'max:1024',
+                Rule::unique('instances', 'path')->ignore($this->route('instance')),
+            ],
             'url' => ['nullable', 'string', 'max:1024', 'url:http,https'],
             'platform' => ['required', Rule::enum(Platform::class)],
             'git_remote' => ['required', 'string', 'max:255'],

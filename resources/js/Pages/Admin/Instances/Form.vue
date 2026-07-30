@@ -12,6 +12,11 @@ const props = defineProps({
         type: Object,
         default: null,
     },
+    // Значения для формы создания копии: та же форма, но post на store.
+    prefill: {
+        type: Object,
+        default: null,
+    },
     testers: {
         type: Array,
         default: () => [],
@@ -19,20 +24,21 @@ const props = defineProps({
 });
 
 const isEdit = !!props.instance;
+const source = props.instance ?? props.prefill;
 
 const form = useForm({
-    name: props.instance?.name ?? '',
-    path: props.instance?.path ?? '',
-    url: props.instance?.url ?? '',
-    platform: props.instance?.platform ?? 'linux',
-    git_remote: props.instance?.git_remote ?? 'origin',
-    default_branch: props.instance?.default_branch ?? 'main',
-    composer_command: props.instance?.composer_command ?? 'composer install --no-dev --no-interaction',
-    migrate_command: props.instance?.migrate_command ?? 'php artisan migrate --force',
-    frontend_command: props.instance?.frontend_command ?? 'npm ci && npm run build',
-    allowed_path_prefix: props.instance?.allowed_path_prefix ?? '',
-    is_active: props.instance?.is_active ?? true,
-    tester_ids: props.instance?.tester_ids ?? [],
+    name: source?.name ?? '',
+    path: source?.path ?? '',
+    url: source?.url ?? '',
+    platform: source?.platform ?? 'linux',
+    git_remote: source?.git_remote ?? 'origin',
+    default_branch: source?.default_branch ?? 'main',
+    composer_command: source?.composer_command ?? 'composer install --no-dev --no-interaction',
+    migrate_command: source?.migrate_command ?? 'php artisan migrate --force',
+    frontend_command: source?.frontend_command ?? 'npm ci && npm run build',
+    allowed_path_prefix: source?.allowed_path_prefix ?? '',
+    is_active: source?.is_active ?? true,
+    tester_ids: source?.tester_ids ?? [],
 });
 
 const submit = () => {

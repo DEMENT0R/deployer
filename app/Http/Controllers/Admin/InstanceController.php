@@ -55,6 +55,29 @@ class InstanceController extends Controller
         ]);
     }
 
+    public function duplicate(Instance $instance): Response
+    {
+        return Inertia::render('Admin/Instances/Form', [
+            'instance' => null,
+            // path/url обнуляем: копия должна лежать в своём каталоге и иметь свой URL.
+            'prefill' => [
+                'name' => $instance->name.' (copy)',
+                'path' => '',
+                'url' => '',
+                'platform' => $instance->platform->value,
+                'git_remote' => $instance->git_remote,
+                'default_branch' => $instance->default_branch,
+                'composer_command' => $instance->composer_command,
+                'migrate_command' => $instance->migrate_command,
+                'frontend_command' => $instance->frontend_command,
+                'allowed_path_prefix' => $instance->allowed_path_prefix,
+                'is_active' => $instance->is_active,
+                'tester_ids' => $instance->users()->pluck('users.id'),
+            ],
+            'testers' => $this->testersList(),
+        ]);
+    }
+
     public function store(StoreInstanceRequest $request): RedirectResponse
     {
         $data = $request->validated();

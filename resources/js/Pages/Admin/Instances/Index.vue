@@ -78,6 +78,12 @@ const destroy = (id) => {
                                     >
                                         Edit
                                     </Link>
+                                    <Link
+                                        :href="route('admin.instances.duplicate', instance.id)"
+                                        class="ms-4 text-indigo-600 hover:text-indigo-800"
+                                    >
+                                        Duplicate
+                                    </Link>
                                     <button
                                         type="button"
                                         class="ms-4 text-red-600 hover:text-red-800"
