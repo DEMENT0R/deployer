@@ -15,6 +15,8 @@ class Deployment extends Model
         'instance_id',
         'user_id',
         'branch',
+        'commit_before',
+        'commit_after',
         'action',
         'status',
         'current_step',

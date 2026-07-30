@@ -5,6 +5,7 @@ namespace App\Enums;
 enum DeployStep: string
 {
     case Clone = 'clone';
+    case Rollback = 'rollback';
     case Git = 'git';
     case Composer = 'composer';
     case Migrate = 'migrate';

@@ -52,6 +52,19 @@ class GitService
         $this->runner->runOrFail($command, dirname($target), $onOutput);
     }
 
+    /**
+     * Жёсткий откат рабочего дерева к указанному коммиту. Хэш валидируем отдельно:
+     * в reset --hard он подставляется как аргумент, ветковый паттерн сюда не годится.
+     */
+    public function resetHard(string $cwd, string $commit, ?Closure $onOutput = null): void
+    {
+        if (! preg_match('/^[0-9a-f]{7,40}$/i', $commit)) {
+            throw new DeployException('Invalid commit hash.');
+        }
+
+        $this->runner->runOrFail(['git', 'reset', '--hard', $commit], $cwd, $onOutput);
+    }
+
     public function deployBranch(
         string $cwd,
         string $remote,

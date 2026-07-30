@@ -28,6 +28,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/instances/{instance}/deploy', [DeployController::class, 'store'])
         ->middleware('throttle:10,1')
         ->name('instances.deploy');
+    Route::post('/instances/{instance}/rollback', [DeployController::class, 'rollback'])
+        ->middleware('throttle:10,1')
+        ->name('instances.rollback');
 
     // scopeBindings: деплой ищется среди деплоев этого инстанса, чужой id даёт 404.
     Route::scopeBindings()->group(function () {

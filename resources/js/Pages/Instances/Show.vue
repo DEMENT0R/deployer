@@ -108,6 +108,25 @@ const deploy = (action) => {
     });
 };
 
+// Есть ли к чему откатываться: хоть один успешный полный деплой или деплой ветки.
+const canRollback = computed(() =>
+    props.deployments.some(
+        (d) => ['full', 'branch'].includes(d.action) && d.status === 'success',
+    ),
+);
+
+const rollback = () => {
+    if (!confirm('Roll back the working tree to the state before the last deploy?')) {
+        return;
+    }
+
+    router.post(
+        route('instances.rollback', props.instance.id),
+        {},
+        { preserveScroll: true },
+    );
+};
+
 const refreshBranches = async () => {
     refreshing.value = true;
     refreshError.value = '';
@@ -341,6 +360,13 @@ onUnmounted(() => {
                         >
                             Build frontend
                         </SecondaryButton>
+                        <DangerButton
+                            v-if="canRollback"
+                            :disabled="isRunning"
+                            @click="rollback"
+                        >
+                            Rollback
+                        </DangerButton>
                     </div>
 
                     <InputError class="mt-2" :message="form.errors.branch" />

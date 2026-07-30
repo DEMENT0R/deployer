@@ -50,6 +50,7 @@ class InstanceDeployer
                 $this->step($deployment, $step, function () use ($step, $instance, $deployment, $cwd, $onOutput): void {
                     match ($step) {
                         DeployStep::Clone => $this->runClone($instance, $cwd, $onOutput),
+                        DeployStep::Rollback => $this->runRollback($deployment, $cwd, $onOutput),
                         DeployStep::Git => $this->runGit($instance, $deployment, $cwd, $onOutput),
                         DeployStep::Composer => $this->runComposer($instance, $cwd, $onOutput),
                         DeployStep::Migrate => $this->runMigrate($instance, $cwd, $onOutput),
@@ -65,7 +66,7 @@ class InstanceDeployer
                 'finished_at' => now(),
             ]);
 
-            if ($action === DeployAction::Full || $action === DeployAction::Branch) {
+            if (in_array($action, [DeployAction::Full, DeployAction::Branch, DeployAction::Rollback], true)) {
                 $this->branchResolver->forget($instance);
             }
         } catch (Throwable $e) {
@@ -126,7 +127,28 @@ class InstanceDeployer
             throw new DeployException('Branch is required for git step.');
         }
 
+        // Запоминаем HEAD до pull — это точка, к которой позволит вернуться будущий откат.
+        $deployment->update(['commit_before' => $this->gitService->headCommit($cwd)['sha'] ?? null]);
+
         $this->gitService->deployBranch($cwd, $instance->git_remote, $branch, $onOutput);
+
+        $deployment->update(['commit_after' => $this->gitService->headCommit($cwd)['sha'] ?? null]);
+    }
+
+    private function runRollback(Deployment $deployment, string $cwd, Closure $onOutput): void
+    {
+        // Целевой коммит контроллер кладёт в branch деплоя отката (см. DeployController::rollback).
+        $target = $deployment->branch;
+
+        if (blank($target)) {
+            throw new DeployException('No rollback target commit.');
+        }
+
+        $deployment->update(['commit_before' => $this->gitService->headCommit($cwd)['sha'] ?? null]);
+
+        $this->gitService->resetHard($cwd, $target, $onOutput);
+
+        $deployment->update(['commit_after' => $this->gitService->headCommit($cwd)['sha'] ?? null]);
     }
 
     private function runComposer(Instance $instance, string $cwd, Closure $onOutput): void

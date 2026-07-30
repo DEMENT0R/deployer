@@ -9,12 +9,13 @@ enum DeployAction: string
     case Migrate = 'migrate';
     case Frontend = 'frontend';
     case Clone = 'clone';
+    case Rollback = 'rollback';
 
     public function requiresBranch(): bool
     {
         return match ($this) {
             self::Full, self::Branch => true,
-            self::Migrate, self::Frontend, self::Clone => false,
+            self::Migrate, self::Frontend, self::Clone, self::Rollback => false,
         };
     }
 
@@ -40,6 +41,9 @@ enum DeployAction: string
             self::Migrate => [DeployStep::Migrate],
             self::Frontend => [DeployStep::Frontend],
             self::Clone => [DeployStep::Clone],
+            // Откат кода + пересборка зависимостей и фронта. Миграции не трогаем:
+            // автоматический откат схемы БД слишком опасен, это делают руками.
+            self::Rollback => [DeployStep::Rollback, DeployStep::Composer, DeployStep::Frontend],
         };
     }
 }
