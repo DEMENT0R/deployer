@@ -109,7 +109,13 @@ class InstanceDeployer
             throw new DeployException('Repository URL is not set for this instance.');
         }
 
-        $this->gitService->cloneRepository($instance->repository_url, $target, $instance->default_branch, $onOutput);
+        $this->gitService->cloneRepository(
+            $instance->repository_url,
+            $target,
+            $instance->default_branch,
+            $instance->git_remote,
+            $onOutput,
+        );
     }
 
     private function runGit(Instance $instance, Deployment $deployment, string $cwd, Closure $onOutput): void

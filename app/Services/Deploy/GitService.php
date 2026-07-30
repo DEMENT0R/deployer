@@ -28,9 +28,17 @@ class GitService
         string $repositoryUrl,
         string $target,
         ?string $branch,
+        string $remote = 'origin',
         ?Closure $onOutput = null,
     ): void {
         $command = ['git', 'clone'];
+
+        // По умолчанию git заводит remote «origin». Инстанс может ждать другой (git_remote),
+        // иначе последующие fetch/pull пойдут по несуществующему remote — задаём его сразу.
+        if ($remote !== '' && $remote !== 'origin') {
+            $command[] = '--origin';
+            $command[] = $remote;
+        }
 
         if ($branch !== null && $branch !== '') {
             $this->validateBranch($branch);
