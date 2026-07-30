@@ -30,6 +30,7 @@ const form = useForm({
     name: source?.name ?? '',
     path: source?.path ?? '',
     url: source?.url ?? '',
+    repository_url: source?.repository_url ?? '',
     platform: source?.platform ?? 'linux',
     git_remote: source?.git_remote ?? 'origin',
     default_branch: source?.default_branch ?? 'main',
@@ -100,6 +101,20 @@ const toggleTester = (id) => {
                             Where the deployed instance is reachable. Shown as a link and pinged for health.
                         </p>
                         <InputError class="mt-2" :message="form.errors.url" />
+                    </div>
+
+                    <div>
+                        <InputLabel for="repository_url" value="Repository URL" />
+                        <TextInput
+                            id="repository_url"
+                            v-model="form.repository_url"
+                            class="mt-1 block w-full"
+                            placeholder="git@github.com:org/repo.git"
+                        />
+                        <p class="mt-1 text-xs text-gray-500">
+                            Optional. Used by the "Clone repo" action to bootstrap the working copy at Path.
+                        </p>
+                        <InputError class="mt-2" :message="form.errors.repository_url" />
                     </div>
 
                     <div class="grid gap-4 sm:grid-cols-2">

@@ -21,7 +21,7 @@ class StoreDeploymentRequest extends FormRequest
         $action = DeployAction::tryFrom($this->input('action', ''));
 
         return [
-            'action' => ['required', Rule::enum(DeployAction::class)],
+            'action' => ['required', Rule::in(DeployAction::userTriggerable())],
             'branch' => [
                 Rule::requiredIf(fn () => $action?->requiresBranch() ?? false),
                 'nullable',

@@ -19,6 +19,7 @@ class StoreInstanceRequest extends FormRequest
             'is_active' => $this->boolean('is_active'),
             // Пустое поле формы приходит строкой и валится на правиле url — считаем его «не задано».
             'url' => filled($this->input('url')) ? trim((string) $this->input('url')) : null,
+            'repository_url' => filled($this->input('repository_url')) ? trim((string) $this->input('repository_url')) : null,
         ]);
     }
 
@@ -45,6 +46,8 @@ class StoreInstanceRequest extends FormRequest
                 Rule::unique('instances', 'path')->ignore($this->route('instance')),
             ],
             'url' => ['nullable', 'string', 'max:1024', 'url:http,https'],
+            // Репозиторий для первичного clone. Не проверяем как url: бывают SSH (git@…) и file-адреса.
+            'repository_url' => ['nullable', 'string', 'max:2048'],
             'platform' => ['required', Rule::enum(Platform::class)],
             'git_remote' => ['required', 'string', 'max:255'],
             'default_branch' => ['required', 'string', 'max:255', 'regex:'.config('deployer.branch_pattern')],

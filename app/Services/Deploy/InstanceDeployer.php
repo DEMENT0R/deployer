@@ -24,7 +24,10 @@ class InstanceDeployer
     {
         $instance = $deployment->instance;
         $action = $deployment->action;
-        $cwd = $this->pathValidator->resolve($instance);
+        // Clone бутстрапит каталог, которого ещё нет, — путь резолвим по-другому.
+        $cwd = $action === DeployAction::Clone
+            ? $this->pathValidator->resolveForClone($instance)
+            : $this->pathValidator->resolve($instance);
 
         $steps = [];
         foreach ($action->steps() as $step) {
@@ -46,6 +49,7 @@ class InstanceDeployer
 
                 $this->step($deployment, $step, function () use ($step, $instance, $deployment, $cwd, $onOutput): void {
                     match ($step) {
+                        DeployStep::Clone => $this->runClone($instance, $cwd, $onOutput),
                         DeployStep::Git => $this->runGit($instance, $deployment, $cwd, $onOutput),
                         DeployStep::Composer => $this->runComposer($instance, $cwd, $onOutput),
                         DeployStep::Migrate => $this->runMigrate($instance, $cwd, $onOutput),
@@ -97,6 +101,15 @@ class InstanceDeployer
 
             throw $e;
         }
+    }
+
+    private function runClone(Instance $instance, string $target, Closure $onOutput): void
+    {
+        if (blank($instance->repository_url)) {
+            throw new DeployException('Repository URL is not set for this instance.');
+        }
+
+        $this->gitService->cloneRepository($instance->repository_url, $target, $instance->default_branch, $onOutput);
     }
 
     private function runGit(Instance $instance, Deployment $deployment, string $cwd, Closure $onOutput): void

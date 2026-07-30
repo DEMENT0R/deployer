@@ -18,6 +18,7 @@ class Instance extends Model
         'name',
         'path',
         'url',
+        'repository_url',
         'platform',
         'git_remote',
         'default_branch',

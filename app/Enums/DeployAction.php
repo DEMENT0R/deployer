@@ -8,13 +8,25 @@ enum DeployAction: string
     case Branch = 'branch';
     case Migrate = 'migrate';
     case Frontend = 'frontend';
+    case Clone = 'clone';
 
     public function requiresBranch(): bool
     {
         return match ($this) {
             self::Full, self::Branch => true,
-            self::Migrate, self::Frontend => false,
+            self::Migrate, self::Frontend, self::Clone => false,
         };
+    }
+
+    /**
+     * Действия, которые тестер может запустить со страницы инстанса. Clone здесь нет:
+     * это разовый bootstrap рабочей копии, доступный только из админки.
+     *
+     * @return list<string>
+     */
+    public static function userTriggerable(): array
+    {
+        return [self::Full->value, self::Branch->value, self::Migrate->value, self::Frontend->value];
     }
 
     /**
@@ -27,6 +39,7 @@ enum DeployAction: string
             self::Branch => [DeployStep::Git],
             self::Migrate => [DeployStep::Migrate],
             self::Frontend => [DeployStep::Frontend],
+            self::Clone => [DeployStep::Clone],
         };
     }
 }

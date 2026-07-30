@@ -2,10 +2,14 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\DeployAction;
+use App\Enums\DeployStatus;
 use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreInstanceRequest;
 use App\Http\Requests\Admin\UpdateInstanceRequest;
+use App\Jobs\DeployInstanceJob;
+use App\Models\Deployment;
 use App\Models\Instance;
 use App\Models\User;
 use App\Services\InstanceEnvService;
@@ -26,6 +30,7 @@ class InstanceController extends Controller
                 'name' => $instance->name,
                 'path' => $instance->path,
                 'url' => $instance->url,
+                'repository_url' => $instance->repository_url,
                 'is_active' => $instance->is_active,
                 'users_count' => $instance->users_count,
             ]);
@@ -64,6 +69,7 @@ class InstanceController extends Controller
                 'name' => $instance->name.' (copy)',
                 'path' => '',
                 'url' => '',
+                'repository_url' => $instance->repository_url,
                 'platform' => $instance->platform->value,
                 'git_remote' => $instance->git_remote,
                 'default_branch' => $instance->default_branch,
@@ -101,6 +107,7 @@ class InstanceController extends Controller
                 'name' => $instance->name,
                 'path' => $instance->path,
                 'url' => $instance->url,
+                'repository_url' => $instance->repository_url,
                 'platform' => $instance->platform->value,
                 'git_remote' => $instance->git_remote,
                 'default_branch' => $instance->default_branch,
@@ -134,6 +141,34 @@ class InstanceController extends Controller
 
         return redirect()->route('admin.instances.index')
             ->with('success', 'Instance deleted.');
+    }
+
+    /**
+     * Первичный clone репозитория в каталог инстанса. Оформлен как деплой (action=clone),
+     * чтобы вывод шёл в ту же страницу с живым логом; серьёзную проверку пути и «каталог пуст»
+     * делает PathValidator::resolveForClone уже в джобе.
+     */
+    public function clone(Instance $instance): RedirectResponse
+    {
+        if (blank($instance->repository_url)) {
+            return back()->withErrors(['clone' => 'Set a repository URL before cloning.']);
+        }
+
+        if ($instance->deployments()->active()->exists()) {
+            return back()->withErrors(['clone' => 'A deployment is already in progress for this instance.']);
+        }
+
+        $deployment = Deployment::create([
+            'instance_id' => $instance->id,
+            'user_id' => request()->user()->id,
+            'action' => DeployAction::Clone,
+            'status' => DeployStatus::Pending,
+        ]);
+
+        DeployInstanceJob::dispatch($deployment->id);
+
+        return redirect()->route('instances.show', $instance)
+            ->with('success', 'Clone queued.');
     }
 
     /**

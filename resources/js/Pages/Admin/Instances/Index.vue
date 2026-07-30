@@ -16,6 +16,12 @@ const destroy = (id) => {
         router.delete(route('admin.instances.destroy', id));
     }
 };
+
+const cloneRepo = (instance) => {
+    if (confirm(`Clone the repository into ${instance.path}?`)) {
+        router.post(route('admin.instances.clone', instance.id));
+    }
+};
 </script>
 
 <template>
@@ -84,6 +90,14 @@ const destroy = (id) => {
                                     >
                                         Duplicate
                                     </Link>
+                                    <button
+                                        v-if="instance.repository_url"
+                                        type="button"
+                                        class="ms-4 text-indigo-600 hover:text-indigo-800"
+                                        @click="cloneRepo(instance)"
+                                    >
+                                        Clone repo
+                                    </button>
                                     <button
                                         type="button"
                                         class="ms-4 text-red-600 hover:text-red-800"

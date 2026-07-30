@@ -19,6 +19,31 @@ class GitService
         }
     }
 
+    /**
+     * Первичный clone рабочей копии. Каталог назначения git создаёт сам, поэтому
+     * процесс запускаем из родительской директории (её существование проверяет
+     * PathValidator::resolveForClone).
+     */
+    public function cloneRepository(
+        string $repositoryUrl,
+        string $target,
+        ?string $branch,
+        ?Closure $onOutput = null,
+    ): void {
+        $command = ['git', 'clone'];
+
+        if ($branch !== null && $branch !== '') {
+            $this->validateBranch($branch);
+            $command[] = '--branch';
+            $command[] = $branch;
+        }
+
+        $command[] = $repositoryUrl;
+        $command[] = $target;
+
+        $this->runner->runOrFail($command, dirname($target), $onOutput);
+    }
+
     public function deployBranch(
         string $cwd,
         string $remote,

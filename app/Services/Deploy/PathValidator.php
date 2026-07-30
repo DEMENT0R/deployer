@@ -28,18 +28,74 @@ class PathValidator
             throw new PathValidationException("Unable to resolve instance path: {$path}");
         }
 
-        $prefixes = $this->allowedPrefixes($instance);
-
-        foreach ($prefixes as $prefix) {
-            $normalizedPrefix = rtrim(str_replace('\\', '/', $prefix), '/');
-            $normalizedPath = str_replace('\\', '/', $realPath);
-
-            if ($normalizedPath === $normalizedPrefix || str_starts_with($normalizedPath.'/', $normalizedPrefix.'/')) {
-                return $realPath;
-            }
+        if ($this->withinAllowedPrefix(str_replace('\\', '/', $realPath), $instance)) {
+            return $realPath;
         }
 
         throw new PathValidationException('Instance path is not within allowed prefixes.');
+    }
+
+    /**
+     * Путь назначения для первичного clone: каталога ещё нет, поэтому realpath к нему
+     * неприменим — префикс проверяем по нормализованной строке. Дополнительно требуем,
+     * чтобы каталог был пуст (или отсутствовал), а родитель существовал — иначе git clone
+     * либо упадёт, либо затрёт чужие файлы.
+     *
+     * @return non-empty-string
+     */
+    public function resolveForClone(Instance $instance): string
+    {
+        $path = $instance->path;
+
+        if ($path === '' || str_contains($path, '..')) {
+            throw new PathValidationException('Invalid instance path.');
+        }
+
+        $normalizedPath = rtrim(str_replace('\\', '/', $path), '/');
+
+        if (! $this->withinAllowedPrefix($normalizedPath, $instance)) {
+            throw new PathValidationException('Instance path is not within allowed prefixes.');
+        }
+
+        if (is_file($path)) {
+            throw new PathValidationException("Target path is a file: {$path}");
+        }
+
+        if (is_dir($path) && ! $this->isEmptyDir($path)) {
+            throw new PathValidationException("Target path is not empty: {$path}");
+        }
+
+        $parent = dirname($path);
+
+        if (! is_dir($parent)) {
+            throw new PathValidationException("Parent directory does not exist: {$parent}");
+        }
+
+        return $path;
+    }
+
+    private function withinAllowedPrefix(string $normalizedPath, Instance $instance): bool
+    {
+        foreach ($this->allowedPrefixes($instance) as $prefix) {
+            $normalizedPrefix = rtrim(str_replace('\\', '/', $prefix), '/');
+
+            if ($normalizedPath === $normalizedPrefix || str_starts_with($normalizedPath.'/', $normalizedPrefix.'/')) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function isEmptyDir(string $path): bool
+    {
+        $entries = @scandir($path);
+
+        if ($entries === false) {
+            return false;
+        }
+
+        return count(array_diff($entries, ['.', '..'])) === 0;
     }
 
     /**
