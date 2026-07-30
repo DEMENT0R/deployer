@@ -119,6 +119,7 @@ php artisan queue:work --timeout=900
 | `DEPLOYER_HEALTH_TIMEOUT` | `5` | Таймаут health-пинга URL инстанса, секунды |
 | `DEPLOYER_STALE_AFTER` | `960` | Через сколько секунд молчания незавершённый деплой считается брошенным и перестаёт блокировать инстанс. Держите больше `DEPLOYER_JOB_TIMEOUT` |
 | `DEPLOYER_QUEUE_WARN_AFTER` | `15` | Через сколько секунд ожидания в очереди страница предполагает, что `queue:work` не запущен |
+| `DEPLOYER_NOTIFY_ON_FINISH` | `false` | Слать инициатору письмо о завершении деплоя (успех/падение). Нужна настроенная почта `MAIL_*` |
 
 По инстансу, в **Admin → Instances**:
 

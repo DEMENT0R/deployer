@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Enums\DeployStatus;
 use App\Models\Deployment;
+use App\Notifications\DeploymentFinished;
 use App\Services\Deploy\InstanceDeployer;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -55,6 +56,30 @@ class DeployInstanceJob implements ShouldQueue
             report($e);
         } finally {
             $lock->release();
+        }
+
+        $this->notifyInitiator($deployment);
+    }
+
+    /**
+     * Письмо о завершении деплоя. Сбой отправки не должен ронять джобу — деплой уже прошёл.
+     */
+    private function notifyInitiator(Deployment $deployment): void
+    {
+        if (! config('deployer.notify_on_finish', false)) {
+            return;
+        }
+
+        $deployment->refresh()->loadMissing('user', 'instance');
+
+        if (! $deployment->user || ! $deployment->instance) {
+            return;
+        }
+
+        try {
+            $deployment->user->notify(new DeploymentFinished($deployment));
+        } catch (Throwable $e) {
+            report($e);
         }
     }
 }
