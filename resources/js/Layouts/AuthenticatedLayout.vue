@@ -39,26 +39,50 @@ const showingNavigationDropdown = ref(false);
                                 >
                                     Instances
                                 </NavLink>
-                                <template v-if="$page.props.auth.user?.is_admin">
-                                    <NavLink
-                                        :href="route('admin.instances.index')"
-                                        :active="route().current('admin.instances.*')"
-                                    >
-                                        Admin Instances
-                                    </NavLink>
-                                    <NavLink
-                                        :href="route('admin.users.index')"
-                                        :active="route().current('admin.users.*')"
-                                    >
-                                        Users
-                                    </NavLink>
-                                    <NavLink
-                                        :href="route('admin.queues.index')"
-                                        :active="route().current('admin.queues.*')"
-                                    >
-                                        Queues
-                                    </NavLink>
-                                </template>
+
+                                <!-- Админские экраны собраны в один пункт, чтобы не растить бар -->
+                                <Dropdown
+                                    v-if="$page.props.auth.user?.is_admin"
+                                    align="left"
+                                    width="48"
+                                >
+                                    <template #trigger>
+                                        <button
+                                            type="button"
+                                            class="inline-flex h-[66px] items-center border-b-2 px-1 pt-1 text-sm font-medium leading-5 transition duration-150 ease-in-out focus:outline-none"
+                                            :class="
+                                                route().current('admin.*')
+                                                    ? 'border-indigo-400 text-gray-900'
+                                                    : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                                            "
+                                        >
+                                            Admin
+                                            <svg
+                                                class="-me-0.5 ms-1 h-4 w-4"
+                                                xmlns="http://www.w3.org/2000/svg"
+                                                viewBox="0 0 20 20"
+                                                fill="currentColor"
+                                            >
+                                                <path
+                                                    fill-rule="evenodd"
+                                                    d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                                                    clip-rule="evenodd"
+                                                />
+                                            </svg>
+                                        </button>
+                                    </template>
+                                    <template #content>
+                                        <DropdownLink :href="route('admin.instances.index')">
+                                            Instances
+                                        </DropdownLink>
+                                        <DropdownLink :href="route('admin.users.index')">
+                                            Users
+                                        </DropdownLink>
+                                        <DropdownLink :href="route('admin.queues.index')">
+                                            Queues
+                                        </DropdownLink>
+                                    </template>
+                                </Dropdown>
                             </div>
                         </div>
 
@@ -167,24 +191,31 @@ const showingNavigationDropdown = ref(false);
                             Instances
                         </ResponsiveNavLink>
                         <template v-if="$page.props.auth.user?.is_admin">
-                            <ResponsiveNavLink
-                                :href="route('admin.instances.index')"
-                                :active="route().current('admin.instances.*')"
-                            >
-                                Admin Instances
-                            </ResponsiveNavLink>
-                            <ResponsiveNavLink
-                                :href="route('admin.users.index')"
-                                :active="route().current('admin.users.*')"
-                            >
-                                Users
-                            </ResponsiveNavLink>
-                            <ResponsiveNavLink
-                                :href="route('admin.queues.index')"
-                                :active="route().current('admin.queues.*')"
-                            >
-                                Queues
-                            </ResponsiveNavLink>
+                            <div class="mt-2 border-t border-gray-200 pt-2">
+                                <div
+                                    class="px-4 py-1 text-xs font-semibold uppercase tracking-wide text-gray-400"
+                                >
+                                    Admin
+                                </div>
+                                <ResponsiveNavLink
+                                    :href="route('admin.instances.index')"
+                                    :active="route().current('admin.instances.*')"
+                                >
+                                    Instances
+                                </ResponsiveNavLink>
+                                <ResponsiveNavLink
+                                    :href="route('admin.users.index')"
+                                    :active="route().current('admin.users.*')"
+                                >
+                                    Users
+                                </ResponsiveNavLink>
+                                <ResponsiveNavLink
+                                    :href="route('admin.queues.index')"
+                                    :active="route().current('admin.queues.*')"
+                                >
+                                    Queues
+                                </ResponsiveNavLink>
+                            </div>
                         </template>
                     </div>
 
