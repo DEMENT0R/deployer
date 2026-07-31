@@ -26,10 +26,6 @@ class InstanceDeployer
     {
         $instance = $deployment->instance;
         $action = $deployment->action;
-        // Clone и Copy бутстрапят каталог, которого ещё нет, — путь резолвим по-другому.
-        $cwd = in_array($action, [DeployAction::Clone, DeployAction::Copy], true)
-            ? $this->pathValidator->resolveForClone($instance)
-            : $this->pathValidator->resolve($instance);
 
         $steps = [];
         foreach ($action->steps() as $step) {
@@ -40,6 +36,14 @@ class InstanceDeployer
         $onOutput = fn (string $chunk) => $deployment->appendOutput($chunk);
 
         try {
+            // Внутри try: непройденная валидация пути должна попасть в лог деплоя и уронить его
+            // в failed. Снаружи она оставляла деплой навсегда в running с пустым логом, а причину —
+            // только в laravel.log. Clone и Copy бутстрапят каталог, которого ещё нет, — путь
+            // резолвим по-другому.
+            $cwd = in_array($action, [DeployAction::Clone, DeployAction::Copy], true)
+                ? $this->pathValidator->resolveForClone($instance)
+                : $this->pathValidator->resolve($instance);
+
             foreach ($action->steps() as $step) {
                 if ($step === DeployStep::Composer && blank($instance->composer_command)) {
                     $deployment->markStepSuccess($step);

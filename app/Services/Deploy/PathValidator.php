@@ -19,7 +19,12 @@ class PathValidator
         }
 
         if (! is_dir($path)) {
-            throw new PathValidationException("Instance path does not exist: {$path}");
+            // Каталог, закрытый от воркера по правам (обычное дело для /home/user на Linux),
+            // отсюда неотличим от отсутствующего — называем оба варианта, иначе поиск причины
+            // уходит не туда.
+            throw new PathValidationException(
+                "Instance path does not exist or is not readable by the web/worker user: {$path}"
+            );
         }
 
         $realPath = realpath($path);
@@ -68,7 +73,17 @@ class PathValidator
         $parent = dirname($path);
 
         if (! is_dir($parent)) {
-            throw new PathValidationException("Parent directory does not exist: {$parent}");
+            throw new PathValidationException(
+                "Parent directory does not exist or is not readable by the web/worker user: {$parent}"
+            );
+        }
+
+        // Каталог назначения создаёт git clone или rsync, то есть тот же пользователь, под которым
+        // крутится воркер. Проверяем заранее: иначе падение приходит из середины подпроцесса.
+        if (! is_writable($parent)) {
+            throw new PathValidationException(
+                "The web/worker user cannot create the target directory in {$parent}."
+            );
         }
 
         return $path;
