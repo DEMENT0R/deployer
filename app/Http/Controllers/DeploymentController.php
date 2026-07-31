@@ -6,6 +6,7 @@ use App\Enums\DeployStatus;
 use App\Http\Controllers\Concerns\FormatsDeployments;
 use App\Models\Deployment;
 use App\Models\Instance;
+use App\Services\DeploymentCommitsService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -22,6 +23,20 @@ class DeploymentController extends Controller
         return response()->json(
             $this->formatDeploymentDetail($deployment->loadMissing('user:id,name'))
         );
+    }
+
+    /**
+     * Коммиты, уехавшие в этот деплой. Отдельным запросом, а не вместе с логом:
+     * это git-подпроцесс, он не должен задерживать открытие модалки и попадать в поллинг.
+     */
+    public function commits(
+        Instance $instance,
+        Deployment $deployment,
+        DeploymentCommitsService $commitsService,
+    ): JsonResponse {
+        $this->authorize('view', $instance);
+
+        return response()->json($commitsService->forDeployment($deployment->setRelation('instance', $instance)));
     }
 
     /**

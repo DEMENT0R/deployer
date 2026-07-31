@@ -1,5 +1,6 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import DeployCommits from '@/Components/DeployCommits.vue';
 import DeployLog from '@/Components/DeployLog.vue';
 import DeploymentHistory from '@/Components/DeploymentHistory.vue';
 import DeployStatusBadge from '@/Components/DeployStatusBadge.vue';
@@ -215,10 +216,42 @@ const logDeployment = ref(null);
 const logLoading = ref(false);
 const logError = ref('');
 
+const commits = ref(null);
+const commitsLoading = ref(false);
+
+// Коммиты тянем своим запросом: git-подпроцесс не должен задерживать лог.
+const loadCommits = async (deployment) => {
+    commits.value = null;
+    commitsLoading.value = true;
+
+    try {
+        const { data } = await axios.get(
+            route('instances.deployments.commits', [
+                props.instance.id,
+                deployment.id,
+            ]),
+        );
+        commits.value = data;
+    } catch (error) {
+        commits.value = {
+            status: 'git_error',
+            message:
+                error.response?.data?.message ?? 'Failed to load commits.',
+            direction: null,
+            truncated: false,
+            commits: [],
+        };
+    } finally {
+        commitsLoading.value = false;
+    }
+};
+
 const openLog = async (deployment) => {
     logLoading.value = true;
     logError.value = '';
     logDeployment.value = { ...deployment, output: null };
+
+    loadCommits(deployment);
 
     try {
         const { data } = await axios.get(
@@ -239,6 +272,7 @@ const openLog = async (deployment) => {
 const closeLog = () => {
     logDeployment.value = null;
     logError.value = '';
+    commits.value = null;
 };
 
 onMounted(() => {
@@ -482,6 +516,12 @@ onUnmounted(() => {
                     class="mb-4"
                     :steps="logDeployment.steps"
                     :current-step="logDeployment.current_step"
+                />
+
+                <DeployCommits
+                    class="mb-4"
+                    :result="commits"
+                    :loading="commitsLoading"
                 />
 
                 <p v-if="logError" class="mb-2 text-sm text-red-600">

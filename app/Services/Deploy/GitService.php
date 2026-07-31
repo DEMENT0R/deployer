@@ -53,6 +53,58 @@ class GitService
     }
 
     /**
+     * Коммиты в диапазоне `$from..$to` — то, что уехало в деплой. Разделители: \x1f между
+     * полями, \x1e между коммитами (в теме коммита и имени автора они не встречаются).
+     *
+     * @return list<array{sha: string, short_sha: string, subject: string, author: string, committed_at: ?string}>
+     */
+    public function commitsBetween(string $cwd, string $from, string $to, int $limit = 100): array
+    {
+        foreach ([$from, $to] as $commit) {
+            if (! preg_match('/^[0-9a-f]{7,40}$/i', $commit)) {
+                throw new DeployException('Invalid commit hash.');
+            }
+        }
+
+        $result = $this->runner->run(
+            ['git', 'log', '--max-count='.$limit, '--format=%H%x1f%h%x1f%s%x1f%an%x1f%cI%x1e', "{$from}..{$to}"],
+            $cwd,
+            null,
+            30,
+        );
+
+        if (! $result->successful) {
+            throw new GitException($result->combinedOutput() ?: 'Failed to read commit range.');
+        }
+
+        $commits = [];
+
+        foreach (explode("\x1e", $result->output) as $record) {
+            $record = trim($record);
+
+            if ($record === '') {
+                continue;
+            }
+
+            $parts = explode("\x1f", $record);
+
+            if (count($parts) < 5) {
+                continue;
+            }
+
+            $commits[] = [
+                'sha' => $parts[0],
+                'short_sha' => $parts[1],
+                'subject' => $parts[2],
+                'author' => $parts[3],
+                'committed_at' => $parts[4] !== '' ? $parts[4] : null,
+            ];
+        }
+
+        return $commits;
+    }
+
+    /**
      * Жёсткий откат рабочего дерева к указанному коммиту. Хэш валидируем отдельно:
      * в reset --hard он подставляется как аргумент, ветковый паттерн сюда не годится.
      */

@@ -38,6 +38,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::scopeBindings()->group(function () {
         Route::get('/instances/{instance}/deployments/{deployment}', [DeploymentController::class, 'show'])
             ->name('instances.deployments.show');
+        Route::get('/instances/{instance}/deployments/{deployment}/commits', [DeploymentController::class, 'commits'])
+            ->middleware('throttle:30,1')
+            ->name('instances.deployments.commits');
         Route::post('/instances/{instance}/deployments/{deployment}/cancel', [DeploymentController::class, 'cancel'])
             ->name('instances.deployments.cancel');
     });
