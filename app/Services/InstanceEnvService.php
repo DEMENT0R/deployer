@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Exceptions\EnvWriteException;
 use App\Exceptions\PathValidationException;
 use App\Models\Instance;
 use App\Services\Deploy\PathValidator;
@@ -9,10 +10,11 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 
 /**
- * Читает .env целевого проекта для админского просмотра.
+ * Читает и правит .env целевого проекта из админки.
  *
  * Наружу уходят только ключи из `deployer.env_visible_keys`, значения чувствительных
  * ключей маскируются здесь же — незамаскированное значение не должно доехать до Inertia.
+ * Правка ограничена тем же списком ключей: что админ видит, то и может менять.
  */
 class InstanceEnvService
 {
@@ -93,6 +95,139 @@ class InstanceEnvService
     }
 
     /**
+     * Записывает значения в .env целевого проекта. Меняются только ключи, пришедшие в $values,
+     * и только из env_visible_keys — остальной файл (порядок, комментарии, незнакомые ключи)
+     * остаётся байт в байт. Ключа нет в файле — дописываем в конец; но пустое значение
+     * несуществующего ключа строку-пустышку не создаёт.
+     *
+     * Перед записью рядом кладётся `.env.backup`: правка боевого .env из браузера должна
+     * иметь путь назад, не требующий панели.
+     *
+     * @param  array<string, string>  $values
+     * @return list<string> ключи, которые действительно изменились
+     *
+     * @throws PathValidationException
+     * @throws EnvWriteException
+     */
+    public function update(Instance $instance, array $values): array
+    {
+        $path = $this->pathValidator->resolve($instance).DIRECTORY_SEPARATOR.'.env';
+
+        if (! is_file($path)) {
+            throw new EnvWriteException('.env not found for this instance.');
+        }
+
+        if (! is_readable($path) || ! is_writable($path)) {
+            throw new EnvWriteException('The web/worker user cannot write this .env.');
+        }
+
+        $maxSize = (int) config('deployer.env_max_size');
+
+        if (filesize($path) > $maxSize) {
+            throw new EnvWriteException("The .env file is larger than {$maxSize} bytes and was not touched.");
+        }
+
+        $contents = file_get_contents($path);
+
+        if ($contents === false) {
+            throw new EnvWriteException('Failed to read .env.');
+        }
+
+        /** @var list<string> $visibleKeys */
+        $visibleKeys = config('deployer.env_visible_keys', []);
+        $current = $this->parse($contents);
+        $changed = [];
+
+        foreach ($values as $key => $value) {
+            if (! in_array($key, $visibleKeys, true)) {
+                continue;
+            }
+
+            $present = array_key_exists($key, $current);
+
+            if ($present && $current[$key] === $value) {
+                continue;
+            }
+
+            if (! $present && $value === '') {
+                continue;
+            }
+
+            // Замаскированное значение браузеру не показывалось, поэтому пустое поле секрета
+            // означает «не трогать», а не «стереть». Правило серверное: устаревшая форма или
+            // запрос мимо интерфейса иначе затирали бы пароль пустотой.
+            if ($value === '' && $this->isSensitive($key)) {
+                continue;
+            }
+
+            $contents = $present
+                ? $this->replaceKey($contents, $key, $value)
+                : $this->appendKey($contents, $key, $value);
+
+            $changed[] = $key;
+        }
+
+        if ($changed === []) {
+            return [];
+        }
+
+        if (! @copy($path, $path.'.backup')) {
+            throw new EnvWriteException('Failed to write the .env.backup copy, nothing was changed.');
+        }
+
+        if (file_put_contents($path, $contents, LOCK_EX) === false) {
+            throw new EnvWriteException('Failed to write .env.');
+        }
+
+        return $changed;
+    }
+
+    /**
+     * Хвост строки берём как [^\r\n]*, а не .*$ — иначе на CRLF-файле «конец строки» не совпадёт.
+     * Значение подставляем колбэком: в строке замены `$` и `\` пришлось бы экранировать.
+     */
+    private function replaceKey(string $contents, string $key, string $value): string
+    {
+        $pattern = '/^([ \t]*(?:export[ \t]+)?'.preg_quote($key, '/').'[ \t]*=)[^\r\n]*/m';
+        $formatted = $this->formatValue($value);
+
+        return preg_replace_callback(
+            $pattern,
+            fn (array $matches) => $matches[1].$formatted,
+            $contents,
+        ) ?? $contents;
+    }
+
+    private function appendKey(string $contents, string $key, string $value): string
+    {
+        // Перевод строки берём тот же, что уже в файле, чтобы не смешивать CRLF и LF.
+        $eol = str_contains($contents, "\r\n") ? "\r\n" : "\n";
+
+        if ($contents !== '' && ! preg_match('/\R$/', $contents)) {
+            $contents .= $eol;
+        }
+
+        return $contents.$key.'='.$this->formatValue($value).$eol;
+    }
+
+    /**
+     * Кавычки ставим только там, где без них значение прочитается иначе: пробел обрежется,
+     * `#` начнёт комментарий.
+     */
+    private function formatValue(string $value): string
+    {
+        if ($value !== '' && preg_match('/^[A-Za-z0-9_.\-\/:@+=]+$/', $value)) {
+            return $value;
+        }
+
+        if ($value === '') {
+            return '';
+        }
+
+        return '"'.str_replace(['\\', '"'], ['\\\\', '\"'], $value).'"';
+    }
+
+    /**
      * @param  array{path: string, size: int, modified_at: ?string}|null  $meta
      * @return array{status: string, message: string, file: null|array{path: string, size: int, modified_at: ?string}, variables: list<never>, hidden_count: int}
      */
@@ -161,7 +296,12 @@ class InstanceEnvService
         $quote = $value[0] ?? '';
 
         if (strlen($value) >= 2 && ($quote === '"' || $quote === "'") && str_ends_with($value, $quote)) {
-            return substr($value, 1, -1);
+            $unquoted = substr($value, 1, -1);
+
+            // Внутри двойных кавычек \" и \\ — экранирование, а не два символа.
+            return $quote === '"'
+                ? str_replace(['\"', '\\\\'], ['"', '\\'], $unquoted)
+                : $unquoted;
         }
 
         // Незакавыченное значение обрывается на inline-комментарии — как в dotenv.

@@ -5,8 +5,11 @@ namespace App\Http\Controllers\Admin;
 use App\Enums\DeployAction;
 use App\Enums\DeployStatus;
 use App\Enums\UserRole;
+use App\Exceptions\EnvWriteException;
+use App\Exceptions\PathValidationException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreInstanceRequest;
+use App\Http\Requests\Admin\UpdateInstanceEnvRequest;
 use App\Http\Requests\Admin\UpdateInstanceRequest;
 use App\Jobs\DeployInstanceJob;
 use App\Models\Deployment;
@@ -50,6 +53,22 @@ class InstanceController extends Controller
             ],
             'env' => $envService->inspect($instance),
         ]);
+    }
+
+    public function updateEnv(
+        UpdateInstanceEnvRequest $request,
+        Instance $instance,
+        InstanceEnvService $envService,
+    ): RedirectResponse {
+        try {
+            $changed = $envService->update($instance, $request->validated()['values']);
+        } catch (EnvWriteException|PathValidationException $exception) {
+            return back()->withErrors(['env' => $exception->getMessage()]);
+        }
+
+        return back()->with('success', $changed === []
+            ? 'Nothing to update.'
+            : 'Updated: '.implode(', ', $changed).'.');
     }
 
     public function create(): Response

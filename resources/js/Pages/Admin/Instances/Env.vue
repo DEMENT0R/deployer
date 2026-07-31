@@ -1,7 +1,10 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { Head, Link } from '@inertiajs/vue3';
-import { computed } from 'vue';
+import InputError from '@/Components/InputError.vue';
+import PrimaryButton from '@/Components/PrimaryButton.vue';
+import TextInput from '@/Components/TextInput.vue';
+import { Head, Link, useForm } from '@inertiajs/vue3';
+import { computed, watch } from 'vue';
 
 const props = defineProps({
     instance: {
@@ -28,6 +31,33 @@ const problem = computed(() =>
 const formatSize = (bytes) => `${bytes} B`;
 
 const formatDate = (iso) => (iso ? new Date(iso).toLocaleString() : '—');
+
+// Замаскированное значение до браузера не доезжает, поэтому поле секрета всегда пустое:
+// пустым и отправляем — сервер такой ключ не трогает.
+const seed = () =>
+    Object.fromEntries(
+        (props.env.variables ?? []).map((variable) => [
+            variable.key,
+            variable.masked ? '' : (variable.value ?? ''),
+        ]),
+    );
+
+const form = useForm({ values: seed() });
+
+watch(() => props.env, () => form.defaults({ values: seed() }).reset());
+
+const placeholder = (variable) => {
+    if (variable.masked) return variable.value ? `${variable.value} (unchanged)` : 'unchanged';
+
+    return variable.present ? '' : 'not set';
+};
+
+// Пустое поле секрета сервер трактует как «не трогать» — фильтровать на клиенте нечего.
+const submit = () => {
+    form.put(route('admin.instances.env.update', props.instance.id), {
+        preserveScroll: true,
+    });
+};
 </script>
 
 <template>
@@ -81,10 +111,18 @@ const formatDate = (iso) => (iso ? new Date(iso).toLocaleString() : '—');
                     <p class="mt-1 break-all font-mono text-sm text-amber-800">{{ env.message }}</p>
                 </div>
 
-                <div v-else class="overflow-hidden rounded-lg bg-white shadow-sm">
+                <form v-else class="overflow-hidden rounded-lg bg-white shadow-sm" @submit.prevent="submit">
                     <div class="border-b border-gray-200 px-4 py-3 font-medium text-gray-900">
                         Environment
                     </div>
+
+                    <div v-if="form.errors.env" class="border-b border-red-200 bg-red-50 px-4 py-3">
+                        <p class="text-sm text-red-800">{{ form.errors.env }}</p>
+                    </div>
+                    <div v-if="form.errors.values" class="border-b border-red-200 bg-red-50 px-4 py-3">
+                        <p class="text-sm text-red-800">{{ form.errors.values }}</p>
+                    </div>
+
                     <table class="min-w-full divide-y divide-gray-200">
                         <thead class="bg-gray-50">
                             <tr>
@@ -94,29 +132,52 @@ const formatDate = (iso) => (iso ? new Date(iso).toLocaleString() : '—');
                         </thead>
                         <tbody class="divide-y divide-gray-200">
                             <tr v-for="variable in env.variables" :key="variable.key">
-                                <td class="px-4 py-2 font-mono text-sm text-gray-900">{{ variable.key }}</td>
-                                <td class="px-4 py-2 text-sm">
-                                    <span v-if="!variable.present" class="text-gray-400">not set</span>
-                                    <span v-else-if="variable.value === ''" class="text-gray-400">empty</span>
-                                    <span v-else class="break-all font-mono text-gray-900">{{ variable.value }}</span>
+                                <td class="w-64 px-4 py-2 align-top font-mono text-sm text-gray-900">
+                                    {{ variable.key }}
                                     <span
                                         v-if="variable.masked"
-                                        class="ms-2 rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-600"
+                                        class="ms-2 rounded bg-gray-100 px-1.5 py-0.5 font-sans text-xs text-gray-600"
                                     >
                                         masked
                                     </span>
                                 </td>
+                                <td class="px-4 py-2 text-sm">
+                                    <TextInput
+                                        v-model="form.values[variable.key]"
+                                        class="block w-full font-mono text-sm"
+                                        :placeholder="placeholder(variable)"
+                                    />
+                                    <InputError class="mt-1" :message="form.errors[`values.${variable.key}`]" />
+                                </td>
                             </tr>
                         </tbody>
                     </table>
+
+                    <div class="flex items-center gap-4 border-t border-gray-200 px-4 py-3">
+                        <PrimaryButton :disabled="form.processing">Save</PrimaryButton>
+                        <Transition
+                            enter-active-class="transition ease-in-out"
+                            enter-from-class="opacity-0"
+                            leave-active-class="transition ease-in-out"
+                            leave-to-class="opacity-0"
+                        >
+                            <p v-if="form.recentlySuccessful" class="text-sm text-gray-600">Saved.</p>
+                        </Transition>
+                    </div>
+
                     <div class="border-t border-gray-200 px-4 py-3 text-sm text-gray-500">
-                        Only keys from <span class="font-mono">deployer.env_visible_keys</span> are shown;
-                        secrets are masked before leaving the server.
+                        Only keys from <span class="font-mono">deployer.env_visible_keys</span> are shown and
+                        editable; secrets are masked before leaving the server, so leave a masked field empty
+                        to keep its current value. The previous file is kept as
+                        <span class="font-mono">.env.backup</span> next to it. If the target project caches
+                        its config, run <span class="font-mono">php artisan config:clear</span> there for the
+                        change to take effect.
                         <template v-if="env.hidden_count">
-                            {{ env.hidden_count }} other variable(s) in this file are not displayed.
+                            {{ env.hidden_count }} other variable(s) in this file are not displayed and are
+                            left untouched.
                         </template>
                     </div>
-                </div>
+                </form>
             </div>
         </div>
     </AuthenticatedLayout>
