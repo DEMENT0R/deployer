@@ -3,6 +3,7 @@
 use App\Http\Controllers\ActivityController;
 use App\Http\Controllers\Admin\InstanceController as AdminInstanceController;
 use App\Http\Controllers\Admin\QueueController as AdminQueueController;
+use App\Http\Controllers\Admin\ScreenController as AdminScreenController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\BranchController;
 use App\Http\Controllers\DeployController;
@@ -59,6 +60,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::middleware('admin')->prefix('admin')->name('admin.')->group(function () {
         Route::get('queues', [AdminQueueController::class, 'index'])->name('queues.index');
+        Route::get('screens', [AdminScreenController::class, 'index'])->name('screens.index');
         Route::post('queues/failed/{uuid}/retry', [AdminQueueController::class, 'retry'])->name('queues.retry');
         Route::delete('queues/failed/{uuid}', [AdminQueueController::class, 'forget'])->name('queues.forget');
         Route::get('instances/{instance}/env', [AdminInstanceController::class, 'env'])->name('instances.env');

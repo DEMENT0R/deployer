@@ -89,6 +89,9 @@ const showingNavigationDropdown = ref(false);
                                         <DropdownLink :href="route('admin.queues.index')">
                                             Queues
                                         </DropdownLink>
+                                        <DropdownLink :href="route('admin.screens.index')">
+                                            Screens
+                                        </DropdownLink>
                                     </template>
                                 </Dropdown>
                             </div>
@@ -231,6 +234,12 @@ const showingNavigationDropdown = ref(false);
                                     :active="route().current('admin.queues.*')"
                                 >
                                     Queues
+                                </ResponsiveNavLink>
+                                <ResponsiveNavLink
+                                    :href="route('admin.screens.index')"
+                                    :active="route().current('admin.screens.*')"
+                                >
+                                    Screens
                                 </ResponsiveNavLink>
                             </div>
                         </template>

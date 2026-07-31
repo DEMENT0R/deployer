@@ -116,4 +116,13 @@ return [
     | его ждёт открытая страница инстанса.
     */
     'health_timeout' => (int) env('DEPLOYER_HEALTH_TIMEOUT', 5),
+
+    /*
+    | Чьи screen-сессии не показывать на Admin → Screens без явного запроса. По умолчанию
+    | root: его сессии — это системные демоны, а не стенды, и в списке они только мешают.
+    | Скрытые пользователи остаются в фильтре, выбор в нём показывает их сессии.
+    */
+    'screen_hidden_users' => array_values(array_filter(
+        array_map('trim', explode(',', env('DEPLOYER_SCREEN_HIDDEN_USERS', 'root')))
+    )),
 ];
