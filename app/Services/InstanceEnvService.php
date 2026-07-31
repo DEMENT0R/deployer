@@ -18,6 +18,8 @@ use Illuminate\Support\Str;
  */
 class InstanceEnvService
 {
+    private const EXAMPLE_FILE = '.env.example';
+
     public function __construct(private readonly PathValidator $pathValidator) {}
 
     /**
@@ -26,7 +28,8 @@ class InstanceEnvService
      *     message: ?string,
      *     file: ?array{path: string, size: int, modified_at: ?string},
      *     variables: list<array{key: string, value: ?string, masked: bool, present: bool}>,
-     *     hidden_count: int
+     *     hidden_count: int,
+     *     example_available: bool
      * }
      */
     public function inspect(Instance $instance): array
@@ -38,13 +41,15 @@ class InstanceEnvService
         }
 
         $path = $root.DIRECTORY_SEPARATOR.'.env';
+        // Отсутствующий .env страница предлагает завести — и должна знать, есть ли из чего.
+        $example = is_file($root.DIRECTORY_SEPARATOR.self::EXAMPLE_FILE);
 
         if (! is_file($path)) {
-            return $this->failure('missing', ".env not found in {$root}");
+            return $this->failure('missing', ".env not found in {$root}", null, $example);
         }
 
         if (! is_readable($path)) {
-            return $this->failure('unreadable', 'The web/worker user cannot read this .env.');
+            return $this->failure('unreadable', 'The web/worker user cannot read this .env.', null, $example);
         }
 
         $meta = $this->meta($path);
@@ -54,14 +59,15 @@ class InstanceEnvService
             return $this->failure(
                 'too_large',
                 "The .env file is larger than {$maxSize} bytes and was not parsed.",
-                $meta
+                $meta,
+                $example
             );
         }
 
         $contents = file_get_contents($path);
 
         if ($contents === false) {
-            return $this->failure('unreadable', 'Failed to read .env.', $meta);
+            return $this->failure('unreadable', 'Failed to read .env.', $meta, $example);
         }
 
         $parsed = $this->parse($contents);
@@ -91,7 +97,62 @@ class InstanceEnvService
             'file' => $meta,
             'variables' => $variables,
             'hidden_count' => count(array_diff(array_keys($parsed), $visibleKeys)),
+            'example_available' => $example,
         ];
+    }
+
+    /**
+     * Заводит отсутствующий .env: пустым или копией .env.example. Существующий файл не трогаем —
+     * перезапись «создающим» действием стоила бы боевых значений.
+     *
+     * @param  'blank'|'example'  $source
+     *
+     * @throws PathValidationException
+     * @throws EnvWriteException
+     */
+    public function create(Instance $instance, string $source): void
+    {
+        $root = $this->pathValidator->resolve($instance);
+        $path = $root.DIRECTORY_SEPARATOR.'.env';
+
+        if (is_file($path)) {
+            throw new EnvWriteException('.env already exists — delete it on the host first.');
+        }
+
+        if (! is_writable($root)) {
+            throw new EnvWriteException("The web/worker user cannot write into {$root}.");
+        }
+
+        $contents = $source === 'example'
+            ? $this->exampleContents($root)
+            : '';
+
+        if (file_put_contents($path, $contents, LOCK_EX) === false) {
+            throw new EnvWriteException('Failed to create .env.');
+        }
+    }
+
+    private function exampleContents(string $root): string
+    {
+        $example = $root.DIRECTORY_SEPARATOR.self::EXAMPLE_FILE;
+
+        if (! is_file($example) || ! is_readable($example)) {
+            throw new EnvWriteException(self::EXAMPLE_FILE.' not found or not readable in '.$root.'.');
+        }
+
+        $maxSize = (int) config('deployer.env_max_size');
+
+        if (filesize($example) > $maxSize) {
+            throw new EnvWriteException(self::EXAMPLE_FILE." is larger than {$maxSize} bytes.");
+        }
+
+        $contents = file_get_contents($example);
+
+        if ($contents === false) {
+            throw new EnvWriteException('Failed to read '.self::EXAMPLE_FILE.'.');
+        }
+
+        return $contents;
     }
 
     /**
@@ -229,16 +290,21 @@ class InstanceEnvService
 
     /**
      * @param  array{path: string, size: int, modified_at: ?string}|null  $meta
-     * @return array{status: string, message: string, file: null|array{path: string, size: int, modified_at: ?string}, variables: list<never>, hidden_count: int}
+     * @return array{status: string, message: string, file: null|array{path: string, size: int, modified_at: ?string}, variables: list<never>, hidden_count: int, example_available: bool}
      */
-    private function failure(string $status, string $message, ?array $meta = null): array
-    {
+    private function failure(
+        string $status,
+        string $message,
+        ?array $meta = null,
+        bool $exampleAvailable = false,
+    ): array {
         return [
             'status' => $status,
             'message' => $message,
             'file' => $meta,
             'variables' => [],
             'hidden_count' => 0,
+            'example_available' => $exampleAvailable,
         ];
     }
 

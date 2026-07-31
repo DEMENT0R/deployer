@@ -417,6 +417,13 @@ onUnmounted(() => {
                             Deploy branch
                         </SecondaryButton>
                         <SecondaryButton
+                            v-if="instance.has_composer_command"
+                            :disabled="isRunning"
+                            @click="deploy('composer')"
+                        >
+                            Composer
+                        </SecondaryButton>
+                        <SecondaryButton
                             :disabled="isRunning"
                             @click="deploy('migrate')"
                         >

@@ -6,6 +6,7 @@ enum DeployAction: string
 {
     case Full = 'full';
     case Branch = 'branch';
+    case Composer = 'composer';
     case Migrate = 'migrate';
     case Frontend = 'frontend';
     case Clone = 'clone';
@@ -16,7 +17,7 @@ enum DeployAction: string
     {
         return match ($this) {
             self::Full, self::Branch => true,
-            self::Migrate, self::Frontend, self::Clone, self::Copy, self::Rollback => false,
+            self::Composer, self::Migrate, self::Frontend, self::Clone, self::Copy, self::Rollback => false,
         };
     }
 
@@ -28,7 +29,13 @@ enum DeployAction: string
      */
     public static function userTriggerable(): array
     {
-        return [self::Full->value, self::Branch->value, self::Migrate->value, self::Frontend->value];
+        return [
+            self::Full->value,
+            self::Branch->value,
+            self::Composer->value,
+            self::Migrate->value,
+            self::Frontend->value,
+        ];
     }
 
     /**
@@ -39,6 +46,7 @@ enum DeployAction: string
         return match ($this) {
             self::Full => [DeployStep::Git, DeployStep::Composer, DeployStep::Migrate, DeployStep::Frontend],
             self::Branch => [DeployStep::Git],
+            self::Composer => [DeployStep::Composer],
             self::Migrate => [DeployStep::Migrate],
             self::Frontend => [DeployStep::Frontend],
             self::Clone => [DeployStep::Clone],

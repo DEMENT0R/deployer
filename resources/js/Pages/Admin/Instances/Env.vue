@@ -2,9 +2,10 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import InputError from '@/Components/InputError.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
+import SecondaryButton from '@/Components/SecondaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
-import { Head, Link, useForm } from '@inertiajs/vue3';
-import { computed, watch } from 'vue';
+import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
+import { computed, ref, watch } from 'vue';
 
 const props = defineProps({
     instance: {
@@ -50,6 +51,23 @@ const placeholder = (variable) => {
     if (variable.masked) return variable.value ? `${variable.value} (unchanged)` : 'unchanged';
 
     return variable.present ? '' : 'not set';
+};
+
+const page = usePage();
+const creating = ref(false);
+const createError = computed(() => page.props.errors?.env);
+
+const createEnv = (source) => {
+    creating.value = true;
+
+    router.post(
+        route('admin.instances.env.store', props.instance.id),
+        { source },
+        {
+            preserveScroll: true,
+            onFinish: () => (creating.value = false),
+        },
+    );
 };
 
 // Пустое поле секрета сервер трактует как «не трогать» — фильтровать на клиенте нечего.
@@ -109,6 +127,24 @@ const submit = () => {
                 >
                     <div class="font-medium text-amber-900">{{ problem }}</div>
                     <p class="mt-1 break-all font-mono text-sm text-amber-800">{{ env.message }}</p>
+
+                    <div v-if="env.status === 'missing'" class="mt-4 flex flex-wrap items-center gap-2">
+                        <PrimaryButton
+                            v-if="env.example_available"
+                            :disabled="creating"
+                            @click="createEnv('example')"
+                        >
+                            Create from .env.example
+                        </PrimaryButton>
+                        <SecondaryButton :disabled="creating" @click="createEnv('blank')">
+                            Create empty .env
+                        </SecondaryButton>
+                        <span v-if="!env.example_available" class="text-xs text-amber-800">
+                            No .env.example in this directory.
+                        </span>
+                    </div>
+
+                    <InputError class="mt-2" :message="createError" />
                 </div>
 
                 <form v-else class="overflow-hidden rounded-lg bg-white shadow-sm" @submit.prevent="submit">

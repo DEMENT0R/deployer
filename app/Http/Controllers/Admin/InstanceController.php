@@ -8,6 +8,7 @@ use App\Enums\UserRole;
 use App\Exceptions\EnvWriteException;
 use App\Exceptions\PathValidationException;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\StoreInstanceEnvRequest;
 use App\Http\Requests\Admin\StoreInstanceRequest;
 use App\Http\Requests\Admin\UpdateInstanceEnvRequest;
 use App\Http\Requests\Admin\UpdateInstanceRequest;
@@ -53,6 +54,20 @@ class InstanceController extends Controller
             ],
             'env' => $envService->inspect($instance),
         ]);
+    }
+
+    public function createEnv(
+        StoreInstanceEnvRequest $request,
+        Instance $instance,
+        InstanceEnvService $envService,
+    ): RedirectResponse {
+        try {
+            $envService->create($instance, $request->validated()['source']);
+        } catch (EnvWriteException|PathValidationException $exception) {
+            return back()->withErrors(['env' => $exception->getMessage()]);
+        }
+
+        return back()->with('success', '.env created.');
     }
 
     public function updateEnv(
