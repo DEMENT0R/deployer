@@ -20,9 +20,10 @@ class DeploymentNotificationTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_initiator_is_notified_when_enabled(): void
+    public function test_initiator_gets_a_mail_when_enabled(): void
     {
-        config(['deployer.notify_on_finish' => true]);
+        // Панельный канал глушим: этот тест именно про письмо.
+        config(['deployer.notify_on_finish' => true, 'deployer.notify_in_panel' => false]);
         Notification::fake();
 
         $user = User::factory()->create(['role' => UserRole::Admin]);
@@ -30,12 +31,33 @@ class DeploymentNotificationTest extends TestCase
 
         $this->runJob($deployment);
 
-        Notification::assertSentTo($user, DeploymentFinished::class);
+        Notification::assertSentTo(
+            $user,
+            DeploymentFinished::class,
+            fn ($notification, array $channels) => $channels === ['mail'],
+        );
     }
 
-    public function test_no_notification_when_disabled(): void
+    public function test_no_mail_when_only_the_panel_channel_is_on(): void
     {
-        config(['deployer.notify_on_finish' => false]);
+        config(['deployer.notify_on_finish' => false, 'deployer.notify_in_panel' => true]);
+        Notification::fake();
+
+        $user = User::factory()->create(['role' => UserRole::Admin]);
+        $deployment = $this->pendingDeployment($user);
+
+        $this->runJob($deployment);
+
+        Notification::assertSentTo(
+            $user,
+            DeploymentFinished::class,
+            fn ($notification, array $channels) => $channels === ['database'],
+        );
+    }
+
+    public function test_nothing_is_sent_when_both_channels_are_off(): void
+    {
+        config(['deployer.notify_on_finish' => false, 'deployer.notify_in_panel' => false]);
         Notification::fake();
 
         $user = User::factory()->create(['role' => UserRole::Admin]);

@@ -34,6 +34,8 @@ class HandleInertiaRequests extends Middleware
         return [
             ...parent::share($request),
             'appName' => config('app.name'),
+            // Замыкание, а не значение: поллинг деплоя ходит с `only` и счётчик не считает.
+            'unreadNotifications' => fn () => $user?->unreadNotifications()->count() ?? 0,
             'auth' => [
                 'user' => $user ? [
                     'id' => $user->id,

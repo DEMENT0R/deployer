@@ -62,11 +62,11 @@ class DeployInstanceJob implements ShouldQueue
     }
 
     /**
-     * Письмо о завершении деплоя. Сбой отправки не должен ронять джобу — деплой уже прошёл.
+     * Уведомление о завершении деплоя. Сбой отправки не должен ронять джобу — деплой уже прошёл.
      */
     private function notifyInitiator(Deployment $deployment): void
     {
-        if (! config('deployer.notify_on_finish', false)) {
+        if (DeploymentFinished::enabledChannels() === []) {
             return;
         }
 

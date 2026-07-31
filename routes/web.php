@@ -9,6 +9,7 @@ use App\Http\Controllers\DeployController;
 use App\Http\Controllers\DeploymentController;
 use App\Http\Controllers\InstanceController;
 use App\Http\Controllers\InstanceHealthController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
 
@@ -20,6 +21,13 @@ Route::get('/', function () {
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/activity', [ActivityController::class, 'index'])->name('activity.index');
+
+    Route::get('/notifications', [NotificationController::class, 'index'])
+        ->middleware('throttle:60,1')
+        ->name('notifications.index');
+    Route::post('/notifications/read-all', [NotificationController::class, 'readAll'])->name('notifications.read-all');
+    Route::post('/notifications/{notification}/read', [NotificationController::class, 'read'])->name('notifications.read');
+
     Route::get('/instances', [InstanceController::class, 'index'])->name('instances.index');
     Route::get('/instances/{instance}', [InstanceController::class, 'show'])->name('instances.show');
     Route::get('/instances/{instance}/health', [InstanceHealthController::class, 'show'])
