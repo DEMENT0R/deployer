@@ -2,6 +2,7 @@
 import { ref } from 'vue';
 import Dropdown from '@/Components/Dropdown.vue';
 import DropdownLink from '@/Components/DropdownLink.vue';
+import FlashMessage from '@/Components/FlashMessage.vue';
 import NavLink from '@/Components/NavLink.vue';
 import NotificationBell from '@/Components/NotificationBell.vue';
 import ResponsiveNavLink from '@/Components/ResponsiveNavLink.vue';
@@ -280,6 +281,8 @@ const showingNavigationDropdown = ref(false);
             <main>
                 <slot />
             </main>
+
+            <FlashMessage />
         </div>
     </div>
 </template>

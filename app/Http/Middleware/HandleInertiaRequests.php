@@ -36,6 +36,11 @@ class HandleInertiaRequests extends Middleware
             'appName' => config('app.name'),
             // Замыкание, а не значение: поллинг деплоя ходит с `only` и счётчик не считает.
             'unreadNotifications' => fn () => $user?->unreadNotifications()->count() ?? 0,
+            // По той же причине замыканием: незапрошенный флеш не должен вычитываться из сессии
+            // на частичной перезагрузке — иначе сообщение сгорит, не доехав до экрана.
+            'flash' => [
+                'success' => fn () => $request->session()->get('success'),
+            ],
             'auth' => [
                 'user' => $user ? [
                     'id' => $user->id,
