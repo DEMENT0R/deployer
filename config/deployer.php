@@ -7,6 +7,19 @@ return [
 
     'branch_pattern' => '/^[a-zA-Z0-9_\/\.\-]+$/',
 
+    /*
+    | Что не копировать при дубле файлов инстанса (rsync --exclude, через запятую).
+    | По умолчанию не тащим то, что ставится заново composer/frontend-шагами того же деплоя,
+    | и мусор рантайма. `.env` исключён всегда: он копируется отдельно и с обнулёнными
+    | DB_DATABASE/APP_URL. `.git` копируется — без него в копию нельзя деплоить.
+    */
+    'copy_excludes' => array_values(array_filter(
+        array_map('trim', explode(',', env(
+            'DEPLOYER_COPY_EXCLUDES',
+            'node_modules/,vendor/,storage/logs/,storage/framework/cache/,storage/framework/sessions/,storage/framework/views/'
+        )))
+    )),
+
     'default_timeout' => (int) env('DEPLOYER_TIMEOUT', 600),
 
     'branch_cache_ttl' => (int) env('DEPLOYER_BRANCH_CACHE_TTL', 300),

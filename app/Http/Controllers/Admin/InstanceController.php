@@ -66,6 +66,8 @@ class InstanceController extends Controller
             'instance' => null,
             // path/url обнуляем: копия должна лежать в своём каталоге и иметь свой URL.
             'prefill' => [
+                'source_instance_id' => $instance->id,
+                'source_path' => $instance->path,
                 'name' => $instance->name.' (copy)',
                 'path' => '',
                 'url' => '',
@@ -88,10 +90,29 @@ class InstanceController extends Controller
     {
         $data = $request->validated();
         $testerIds = $data['tester_ids'] ?? [];
-        unset($data['tester_ids']);
+        $copyFiles = (bool) ($data['copy_files'] ?? false);
+        $sourceInstanceId = $data['source_instance_id'] ?? null;
+        unset($data['tester_ids'], $data['copy_files'], $data['source_instance_id']);
 
         $instance = Instance::create($data);
         $instance->users()->sync($testerIds);
+
+        if ($copyFiles && $sourceInstanceId) {
+            // Копирование каталога — минуты работы, поэтому идёт деплоем: очередь, живой лог,
+            // проверка «каталог назначения пуст» в PathValidator::resolveForClone уже в джобе.
+            $deployment = Deployment::create([
+                'instance_id' => $instance->id,
+                'source_instance_id' => $sourceInstanceId,
+                'user_id' => $request->user()->id,
+                'action' => DeployAction::Copy,
+                'status' => DeployStatus::Pending,
+            ]);
+
+            DeployInstanceJob::dispatch($deployment->id);
+
+            return redirect()->route('instances.show', $instance)
+                ->with('success', 'Instance created. Copying files.');
+        }
 
         return redirect()->route('admin.instances.index')
             ->with('success', 'Instance created.');

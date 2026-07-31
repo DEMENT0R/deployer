@@ -6,6 +6,7 @@ import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import Checkbox from '@/Components/Checkbox.vue';
 import { Head, useForm } from '@inertiajs/vue3';
+import { computed, watch } from 'vue';
 
 const props = defineProps({
     instance: {
@@ -40,6 +41,18 @@ const form = useForm({
     allowed_path_prefix: source?.allowed_path_prefix ?? '',
     is_active: source?.is_active ?? true,
     tester_ids: source?.tester_ids ?? [],
+    source_instance_id: props.prefill?.source_instance_id ?? null,
+    copy_files: false,
+});
+
+const sourcePath = props.prefill?.source_path ?? null;
+// Копируем rsync-ом, поэтому предложить дубль файлов есть смысл только для Linux-инстанса.
+const canCopyFiles = computed(() => !isEdit && !!sourcePath && form.platform === 'linux');
+
+watch(canCopyFiles, (allowed) => {
+    if (!allowed) {
+        form.copy_files = false;
+    }
 });
 
 const submit = () => {
@@ -188,6 +201,28 @@ const toggleTester = (id) => {
                                 {{ tester.name }} ({{ tester.email }})
                             </label>
                         </div>
+                    </div>
+
+                    <div v-if="sourcePath && !isEdit" class="rounded-md bg-gray-50 p-4">
+                        <div class="flex items-center gap-2">
+                            <Checkbox
+                                id="copy_files"
+                                v-model:checked="form.copy_files"
+                                :disabled="!canCopyFiles"
+                            />
+                            <InputLabel for="copy_files" value="Copy files from the original" />
+                        </div>
+                        <p v-if="canCopyFiles" class="mt-1 text-xs text-gray-500">
+                            Copies <span class="font-mono">{{ sourcePath }}</span> into Path, then reinstalls
+                            dependencies and rebuilds the frontend. Path must be empty or not exist yet.
+                            The <span class="font-mono">.env</span> is copied with
+                            <span class="font-mono">DB_DATABASE</span> and
+                            <span class="font-mono">APP_URL</span> left empty — fill them in before deploying.
+                        </p>
+                        <p v-else class="mt-1 text-xs text-gray-500">
+                            Available for Linux instances only.
+                        </p>
+                        <InputError class="mt-2" :message="form.errors.copy_files" />
                     </div>
 
                     <PrimaryButton :disabled="form.processing">

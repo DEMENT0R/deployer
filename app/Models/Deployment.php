@@ -13,6 +13,7 @@ class Deployment extends Model
 {
     protected $fillable = [
         'instance_id',
+        'source_instance_id',
         'user_id',
         'branch',
         'commit_before',
@@ -42,6 +43,12 @@ class Deployment extends Model
     public function instance(): BelongsTo
     {
         return $this->belongsTo(Instance::class);
+    }
+
+    /** Откуда копируем файлы, для action=copy. */
+    public function sourceInstance(): BelongsTo
+    {
+        return $this->belongsTo(Instance::class, 'source_instance_id');
     }
 
     public function user(): BelongsTo

@@ -5,6 +5,7 @@ namespace App\Http\Requests\Admin;
 use App\Enums\Platform;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 class StoreInstanceRequest extends FormRequest
 {
@@ -17,6 +18,7 @@ class StoreInstanceRequest extends FormRequest
     {
         $this->merge([
             'is_active' => $this->boolean('is_active'),
+            'copy_files' => $this->boolean('copy_files'),
             // Пустое поле формы приходит строкой и валится на правиле url — считаем его «не задано».
             'url' => filled($this->input('url')) ? trim((string) $this->input('url')) : null,
             'repository_url' => filled($this->input('repository_url')) ? trim((string) $this->input('repository_url')) : null,
@@ -28,7 +30,26 @@ class StoreInstanceRequest extends FormRequest
      */
     public function rules(): array
     {
-        return $this->baseRules();
+        return array_merge($this->baseRules(), [
+            'copy_files' => ['boolean'],
+            'source_instance_id' => ['nullable', 'integer', 'exists:instances,id', 'required_if:copy_files,true'],
+        ]);
+    }
+
+    /**
+     * Копируем файлы через rsync — на Windows-инстансе такому действию взяться неоткуда.
+     *
+     * @return list<callable>
+     */
+    public function after(): array
+    {
+        return [
+            function (Validator $validator): void {
+                if ($this->boolean('copy_files') && $this->input('platform') === Platform::Windows->value) {
+                    $validator->errors()->add('copy_files', 'Copying files is only supported on Linux instances.');
+                }
+            },
+        ];
     }
 
     /**

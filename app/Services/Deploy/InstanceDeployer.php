@@ -5,6 +5,7 @@ namespace App\Services\Deploy;
 use App\Enums\DeployAction;
 use App\Enums\DeployStatus;
 use App\Enums\DeployStep;
+use App\Enums\Platform;
 use App\Exceptions\DeployException;
 use App\Models\Deployment;
 use App\Models\Instance;
@@ -18,14 +19,15 @@ class InstanceDeployer
         private readonly GitService $gitService,
         private readonly ProcessRunner $processRunner,
         private readonly GitBranchResolver $branchResolver,
+        private readonly FileCopyService $fileCopyService,
     ) {}
 
     public function deploy(Deployment $deployment): void
     {
         $instance = $deployment->instance;
         $action = $deployment->action;
-        // Clone бутстрапит каталог, которого ещё нет, — путь резолвим по-другому.
-        $cwd = $action === DeployAction::Clone
+        // Clone и Copy бутстрапят каталог, которого ещё нет, — путь резолвим по-другому.
+        $cwd = in_array($action, [DeployAction::Clone, DeployAction::Copy], true)
             ? $this->pathValidator->resolveForClone($instance)
             : $this->pathValidator->resolve($instance);
 
@@ -50,6 +52,7 @@ class InstanceDeployer
                 $this->step($deployment, $step, function () use ($step, $instance, $deployment, $cwd, $onOutput): void {
                     match ($step) {
                         DeployStep::Clone => $this->runClone($instance, $cwd, $onOutput),
+                        DeployStep::Copy => $this->runCopy($deployment, $instance, $cwd, $onOutput),
                         DeployStep::Rollback => $this->runRollback($deployment, $cwd, $onOutput),
                         DeployStep::Git => $this->runGit($instance, $deployment, $cwd, $onOutput),
                         DeployStep::Composer => $this->runComposer($instance, $cwd, $onOutput),
@@ -117,6 +120,30 @@ class InstanceDeployer
             $instance->git_remote,
             $onOutput,
         );
+    }
+
+    /**
+     * Дубль файлов существующего инстанса в каталог нового. Источник резолвим через его
+     * собственный инстанс — так путь проверяется теми же префиксами, что и при деплое на него.
+     */
+    private function runCopy(Deployment $deployment, Instance $instance, string $target, Closure $onOutput): void
+    {
+        if ($instance->platform === Platform::Windows) {
+            throw new DeployException('Copying files is only supported on Linux instances.');
+        }
+
+        $source = $deployment->sourceInstance;
+
+        if (! $source) {
+            throw new DeployException('The source instance is no longer available.');
+        }
+
+        $sourcePath = $this->pathValidator->resolve($source);
+
+        $onOutput("[deployer] Copying files from {$sourcePath}\n");
+
+        $this->fileCopyService->copyTree($sourcePath, $target, $onOutput);
+        $this->fileCopyService->seedEnv($sourcePath, $target, $onOutput);
     }
 
     private function runGit(Instance $instance, Deployment $deployment, string $cwd, Closure $onOutput): void

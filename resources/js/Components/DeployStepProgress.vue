@@ -10,9 +10,20 @@ const props = defineProps({
     },
 });
 
-const stepOrder = ['git', 'composer', 'migrate', 'frontend'];
+const stepOrder = [
+    'clone',
+    'copy',
+    'rollback',
+    'git',
+    'composer',
+    'migrate',
+    'frontend',
+];
 
 const stepLabels = {
+    clone: 'Clone',
+    copy: 'Copy files',
+    rollback: 'Rollback',
     git: 'Git',
     composer: 'Composer',
     migrate: 'Migrate',
