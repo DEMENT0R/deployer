@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\ActivityController;
 use App\Http\Controllers\Admin\InstanceController as AdminInstanceController;
 use App\Http\Controllers\Admin\QueueController as AdminQueueController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
@@ -18,6 +19,7 @@ Route::get('/', function () {
 });
 
 Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('/activity', [ActivityController::class, 'index'])->name('activity.index');
     Route::get('/instances', [InstanceController::class, 'index'])->name('instances.index');
     Route::get('/instances/{instance}', [InstanceController::class, 'show'])->name('instances.show');
     Route::get('/instances/{instance}/health', [InstanceHealthController::class, 'show'])

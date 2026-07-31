@@ -39,6 +39,12 @@ const showingNavigationDropdown = ref(false);
                                 >
                                     Instances
                                 </NavLink>
+                                <NavLink
+                                    :href="route('activity.index')"
+                                    :active="route().current('activity.*')"
+                                >
+                                    Activity
+                                </NavLink>
 
                                 <!-- Админские экраны собраны в один пункт, чтобы не растить бар -->
                                 <Dropdown
@@ -189,6 +195,12 @@ const showingNavigationDropdown = ref(false);
                             :active="route().current('instances.*')"
                         >
                             Instances
+                        </ResponsiveNavLink>
+                        <ResponsiveNavLink
+                            :href="route('activity.index')"
+                            :active="route().current('activity.*')"
+                        >
+                            Activity
                         </ResponsiveNavLink>
                         <template v-if="$page.props.auth.user?.is_admin">
                             <div class="mt-2 border-t border-gray-200 pt-2">
