@@ -190,12 +190,21 @@ class GitService
     }
 
     /**
-     * @return list<string>
+     * Ветки remote, свежие сверху. Сортирует git (`--sort=-committerdate`), а не PHP:
+     * порядок должен совпадать с датой, которую отдаём наружу. Свежесть считается по
+     * локальным remote-tracking ссылкам — она настолько свежа, насколько свеж последний fetch.
+     *
+     * @return list<array{name: string, committed_at: ?string}>
      */
     public function remoteBranches(string $cwd, string $remote, ?Closure $onOutput = null): array
     {
         $result = $this->runner->run(
-            ['git', 'for-each-ref', '--format=%(refname:short)', "refs/remotes/{$remote}/"],
+            [
+                'git', 'for-each-ref',
+                '--sort=-committerdate',
+                '--format=%(refname:short)%1f%(committerdate:iso-strict)',
+                "refs/remotes/{$remote}/",
+            ],
             $cwd,
             $onOutput,
             30,
@@ -207,14 +216,18 @@ class GitService
 
         $prefix = "{$remote}/";
 
-        return collect(explode("\n", trim($result->output)))
-            ->map(fn (string $ref) => trim($ref))
-            ->map(fn (string $ref) => str_starts_with($ref, $prefix) ? substr($ref, strlen($prefix)) : $ref)
-            ->filter()
+        return collect(preg_split('/\R/', trim($result->output)) ?: [])
+            ->map(fn (string $line) => explode("\x1f", trim($line)))
+            ->map(fn (array $parts) => [
+                'name' => str_starts_with($parts[0], $prefix)
+                    ? substr($parts[0], strlen($prefix))
+                    : $parts[0],
+                'committed_at' => ($parts[1] ?? '') !== '' ? $parts[1] : null,
+            ])
+            ->filter(fn (array $branch) => $branch['name'] !== '')
             // origin/HEAD is a symbolic ref to the default branch, not a branch to check out.
-            ->reject(fn (string $branch) => $branch === 'HEAD')
-            ->unique()
-            ->sort()
+            ->reject(fn (array $branch) => $branch['name'] === 'HEAD')
+            ->unique('name')
             ->values()
             ->all();
     }

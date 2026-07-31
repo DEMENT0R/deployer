@@ -58,6 +58,40 @@ const branches = ref([...props.branches]);
 const refreshing = ref(false);
 const refreshError = ref(props.branchError ?? '');
 
+const UNITS = [
+    ['year', 31536000],
+    ['month', 2592000],
+    ['week', 604800],
+    ['day', 86400],
+    ['hour', 3600],
+    ['minute', 60],
+];
+
+// «3 days ago» рядом с веткой: без этого сортировка по свежести читается как случайная.
+const relativeTime = (iso) => {
+    const seconds = (Date.now() - new Date(iso).getTime()) / 1000;
+
+    if (Number.isNaN(seconds)) return null;
+    if (seconds < 60) return 'just now';
+
+    // Локаль задаём явно: интерфейс англоязычный, локаль браузера тут не при чём.
+    const formatter = new Intl.RelativeTimeFormat('en', { numeric: 'auto' });
+
+    for (const [unit, size] of UNITS) {
+        if (seconds >= size) {
+            return formatter.format(-Math.floor(seconds / size), unit);
+        }
+    }
+
+    return null;
+};
+
+const branchLabel = (branch) => {
+    const when = branch.committed_at ? relativeTime(branch.committed_at) : null;
+
+    return when ? `${branch.name} · ${when}` : branch.name;
+};
+
 const form = useForm({
     branch: selectedBranch.value,
     action: 'full',
@@ -340,10 +374,10 @@ onUnmounted(() => {
                                     </option>
                                     <option
                                         v-for="branch in branches"
-                                        :key="branch"
-                                        :value="branch"
+                                        :key="branch.name"
+                                        :value="branch.name"
                                     >
-                                        {{ branch }}
+                                        {{ branchLabel(branch) }}
                                     </option>
                                 </select>
                                 <SecondaryButton
