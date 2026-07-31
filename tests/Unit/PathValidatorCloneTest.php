@@ -31,6 +31,20 @@ class PathValidatorCloneTest extends TestCase
         $this->assertSame($target, (new PathValidator)->resolveForClone($instance));
     }
 
+    /**
+     * Заранее заведённый пустой каталог — штатный сценарий, когда воркеру нельзя писать
+     * в родителя: права выдают на сам каталог назначения.
+     */
+    public function test_accepts_an_existing_empty_target(): void
+    {
+        $this->base = $this->tempDir();
+
+        config(['deployer.allowed_path_prefixes' => [dirname($this->base)]]);
+        $instance = Instance::factory()->make(['path' => $this->base, 'allowed_path_prefix' => null]);
+
+        $this->assertSame($this->base, (new PathValidator)->resolveForClone($instance));
+    }
+
     public function test_rejects_a_target_outside_allowed_prefixes(): void
     {
         $this->base = $this->tempDir();

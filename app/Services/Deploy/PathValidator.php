@@ -66,8 +66,21 @@ class PathValidator
             throw new PathValidationException("Target path is a file: {$path}");
         }
 
-        if (is_dir($path) && ! $this->isEmptyDir($path)) {
-            throw new PathValidationException("Target path is not empty: {$path}");
+        // Пустой каталог назначения — рабочий случай, а не полумера: когда воркеру нельзя писать
+        // в родителя (домашний каталог на Linux), каталог заводят руками и выдают права на него.
+        // Тогда права на родителя не нужны — clone и rsync пишут внутрь существующего каталога.
+        if (is_dir($path)) {
+            if (! $this->isEmptyDir($path)) {
+                throw new PathValidationException("Target path is not empty: {$path}");
+            }
+
+            if (! is_writable($path)) {
+                throw new PathValidationException(
+                    "The web/worker user cannot write into the target directory: {$path}"
+                );
+            }
+
+            return $path;
         }
 
         $parent = dirname($path);
