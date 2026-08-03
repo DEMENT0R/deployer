@@ -40,7 +40,13 @@ return [
             'connection' => env('DB_QUEUE_CONNECTION'),
             'table' => env('DB_QUEUE_TABLE', 'jobs'),
             'queue' => env('DB_QUEUE', 'default'),
-            'retry_after' => (int) env('DB_QUEUE_RETRY_AFTER', 90),
+            /*
+            | Через столько секунд очередь считает взятую джобу потерянной и отдаёт её другому
+            | воркеру. Ставим заведомо больше DEPLOYER_JOB_TIMEOUT: деплой идёт минутами, а на
+            | ларавеловских 90 секундах второй воркер перехватывал бы ещё работающий деплой —
+            | тот упирался бы в кэш-лок инстанса и ронял живой деплой в failed на ровном месте.
+            */
+            'retry_after' => (int) env('DB_QUEUE_RETRY_AFTER', (int) env('DEPLOYER_JOB_TIMEOUT', 900) + 300),
             'after_commit' => false,
         ],
 
