@@ -61,26 +61,19 @@ onMounted(() => {
                         <p class="truncate text-sm text-gray-500">
                             {{ instance.path }}
                         </p>
-                        <p class="mt-1 truncate text-xs">
-                            <span class="text-gray-400">DB</span>
-                            <span v-if="!databases" class="text-gray-300">…</span>
-                            <span
-                                v-else-if="databases[instance.id]"
-                                class="font-mono text-gray-600"
-                            >
-                                {{ databases[instance.id] }}
-                            </span>
-                            <span v-else class="text-gray-400">unknown</span>
-                        </p>
-                        <p
-                            v-if="instance.latest_deployment"
-                            class="mt-3 text-xs text-gray-400"
-                        >
-                            Last: {{ instance.latest_deployment.action }}
-                            <span v-if="instance.latest_deployment.branch">
-                                ({{ instance.latest_deployment.branch }})
-                            </span>
-                        </p>
+                        <div class="mt-3 space-y-1 text-xs text-gray-400">
+                            <p v-if="instance.latest_deployment">
+                                Last: {{ instance.latest_deployment.action }}
+                                <span v-if="instance.latest_deployment.branch">
+                                    ({{ instance.latest_deployment.branch }})
+                                </span>
+                            </p>
+                            <p class="truncate">
+                                DB:
+                                <span v-if="!databases" class="text-gray-300">…</span>
+                                <span v-else>{{ databases[instance.id] ?? 'unknown' }}</span>
+                            </p>
+                        </div>
                         <a
                             v-if="instance.url"
                             :href="instance.url"
