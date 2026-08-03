@@ -125,4 +125,17 @@ return [
     'screen_hidden_users' => array_values(array_filter(
         array_map('trim', explode(',', env('DEPLOYER_SCREEN_HIDDEN_USERS', 'root')))
     )),
+
+    /*
+    | Чем поднимать стенд кнопкой Start на Admin → Screens. Команда выполняется внутри
+    | screen-сессии, в каталоге инстанса; `{port}` подставляется из настройки инстанса.
+    | Хост 0.0.0.0 — иначе стенд виден только с самой машины.
+    */
+    'serve_command' => env('DEPLOYER_SERVE_COMMAND', 'php artisan serve --host=0.0.0.0 --port={port}'),
+
+    /*
+    | Сколько ждать после `screen -dmS`, прежде чем проверить, что сессия жива. Сама screen
+    | всегда выходит с нулём — упавшую внутри команду видно только по отсутствию сессии.
+    */
+    'screen_start_check_delay' => (int) env('DEPLOYER_SCREEN_START_CHECK_DELAY', 700),
 ];

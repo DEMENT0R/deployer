@@ -22,6 +22,8 @@ class StoreInstanceRequest extends FormRequest
             // Пустое поле формы приходит строкой и валится на правиле url — считаем его «не задано».
             'url' => filled($this->input('url')) ? trim((string) $this->input('url')) : null,
             'repository_url' => filled($this->input('repository_url')) ? trim((string) $this->input('repository_url')) : null,
+            'screen_session' => filled($this->input('screen_session')) ? trim((string) $this->input('screen_session')) : null,
+            'serve_port' => filled($this->input('serve_port')) ? $this->input('serve_port') : null,
         ]);
     }
 
@@ -37,16 +39,28 @@ class StoreInstanceRequest extends FormRequest
     }
 
     /**
-     * Копируем файлы через rsync — на Windows-инстансе такому действию взяться неоткуда.
-     *
      * @return list<callable>
      */
     public function after(): array
     {
         return [
+            // Копируем файлы через rsync — на Windows-инстансе такому действию взяться неоткуда.
             function (Validator $validator): void {
                 if ($this->boolean('copy_files') && $this->input('platform') === Platform::Windows->value) {
                     $validator->errors()->add('copy_files', 'Copying files is only supported on Linux instances.');
+                }
+            },
+            // Порознь эти два поля бесполезны: по имени сессию находят, по порту поднимают.
+            function (Validator $validator): void {
+                $session = $this->input('screen_session');
+                $port = $this->input('serve_port');
+
+                if (blank($session) && filled($port)) {
+                    $validator->errors()->add('screen_session', 'Set a screen session name together with the serve port.');
+                }
+
+                if (filled($session) && blank($port)) {
+                    $validator->errors()->add('serve_port', 'Set a serve port together with the screen session name.');
                 }
             },
         ];
@@ -76,6 +90,21 @@ class StoreInstanceRequest extends FormRequest
             'migrate_command' => ['required', 'string', 'max:1024'],
             'frontend_command' => ['required', 'string', 'max:1024'],
             'allowed_path_prefix' => ['nullable', 'string', 'max:1024'],
+            // Имя уезжает в argv команды screen, поэтому только безопасный алфавит.
+            'screen_session' => [
+                'nullable',
+                'string',
+                'max:64',
+                'regex:/^[A-Za-z0-9._-]+$/',
+                Rule::unique('instances', 'screen_session')->ignore($this->route('instance')),
+            ],
+            'serve_port' => [
+                'nullable',
+                'integer',
+                'min:1',
+                'max:65535',
+                Rule::unique('instances', 'serve_port')->ignore($this->route('instance')),
+            ],
             'is_active' => ['boolean'],
             'tester_ids' => ['array'],
             'tester_ids.*' => ['integer', 'exists:users,id'],
