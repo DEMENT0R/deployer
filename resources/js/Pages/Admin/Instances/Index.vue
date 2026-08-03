@@ -3,12 +3,22 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import DangerButton from '@/Components/DangerButton.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
+import { onMounted } from 'vue';
 
 defineProps({
     instances: {
         type: Array,
         required: true,
     },
+    // id инстанса → имя БД из его .env. Приезжает отдельным запросом: см. Inertia::defer.
+    databases: {
+        type: Object,
+        default: null,
+    },
+});
+
+onMounted(() => {
+    router.reload({ only: ['databases'] });
 });
 
 const destroy = (id) => {
@@ -47,6 +57,7 @@ const cloneRepo = (instance) => {
                             <tr>
                                 <th class="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Name</th>
                                 <th class="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Path</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">DB</th>
                                 <th class="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">URL</th>
                                 <th class="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Testers</th>
                                 <th class="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Active</th>
@@ -57,6 +68,13 @@ const cloneRepo = (instance) => {
                             <tr v-for="instance in instances" :key="instance.id">
                                 <td class="px-4 py-3 text-sm font-medium text-gray-900">{{ instance.name }}</td>
                                 <td class="px-4 py-3 text-sm text-gray-500">{{ instance.path }}</td>
+                                <td class="px-4 py-3 text-sm text-gray-500">
+                                    <span v-if="!databases" class="text-gray-300">…</span>
+                                    <span v-else-if="databases[instance.id]">
+                                        {{ databases[instance.id] }}
+                                    </span>
+                                    <span v-else class="text-gray-400">—</span>
+                                </td>
                                 <td class="px-4 py-3 text-sm">
                                     <a
                                         v-if="instance.url"

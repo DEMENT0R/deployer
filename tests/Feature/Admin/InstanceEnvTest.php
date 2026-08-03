@@ -3,6 +3,7 @@
 namespace Tests\Feature\Admin;
 
 use App\Enums\UserRole;
+use App\Http\Middleware\HandleInertiaRequests;
 use App\Models\Instance;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -95,6 +96,33 @@ class InstanceEnvTest extends TestCase
             ->get(route('admin.instances.env', $instance))
             ->assertOk()
             ->assertInertia(fn ($page) => $page->where('env.status', 'path_error'));
+    }
+
+    public function test_admin_instance_table_reports_the_database_name(): void
+    {
+        $instance = $this->instanceWithEnv("APP_ENV=testing\nDB_DATABASE=stage_alpha\n");
+        $admin = User::factory()->create(['role' => UserRole::Admin]);
+
+        // Первая отрисовка не читает .env — колонка приезжает отдельным запросом.
+        $this->actingAs($admin)
+            ->get(route('admin.instances.index'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Admin/Instances/Index')
+                ->missing('databases')
+            );
+
+        $databases = $this->actingAs($admin)
+            ->get(route('admin.instances.index'), [
+                'X-Inertia' => 'true',
+                'X-Inertia-Version' => (new HandleInertiaRequests)->version(request()) ?? '',
+                'X-Inertia-Partial-Component' => 'Admin/Instances/Index',
+                'X-Inertia-Partial-Data' => 'databases',
+            ])
+            ->assertOk()
+            ->json('props.databases');
+
+        $this->assertSame('stage_alpha', $databases[$instance->id]);
     }
 
     public function test_tester_cannot_view_env_page(): void

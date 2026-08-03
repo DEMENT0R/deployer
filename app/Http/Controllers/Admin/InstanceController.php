@@ -23,13 +23,15 @@ use Inertia\Response;
 
 class InstanceController extends Controller
 {
-    public function index(): Response
+    public function index(InstanceEnvService $envService): Response
     {
         $instances = Instance::query()
             ->withCount('users')
             ->orderBy('name')
-            ->get()
-            ->map(fn (Instance $instance) => [
+            ->get();
+
+        return Inertia::render('Admin/Instances/Index', [
+            'instances' => $instances->map(fn (Instance $instance) => [
                 'id' => $instance->id,
                 'name' => $instance->name,
                 'path' => $instance->path,
@@ -37,10 +39,12 @@ class InstanceController extends Controller
                 'repository_url' => $instance->repository_url,
                 'is_active' => $instance->is_active,
                 'users_count' => $instance->users_count,
-            ]);
-
-        return Inertia::render('Admin/Instances/Index', [
-            'instances' => $instances,
+            ]),
+            // Имя БД лежит в .env целевого проекта: по походу в файловую систему на инстанс.
+            // Таблица не должна этого ждать — Inertia дотянет отдельным запросом.
+            'databases' => Inertia::defer(fn () => $instances->mapWithKeys(
+                fn (Instance $instance) => [$instance->id => $envService->databaseName($instance)]
+            )),
         ]);
     }
 
