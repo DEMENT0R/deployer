@@ -144,6 +144,9 @@ class QueueMonitorService
             'branch' => $deployment->branch,
             'action' => $deployment->action->value,
             'status' => $deployment->status->value,
+            // Незавершённый деплой, о котором давно ничего не слышно: страница инстанса зовёт
+            // такой Abandoned, а здесь он выглядел живым — и «висел» в списке неделями.
+            'is_stale' => $deployment->isStale(),
             'current_step' => $deployment->current_step?->value,
             'started_at' => $deployment->started_at?->toIso8601String(),
             'finished_at' => $deployment->finished_at?->toIso8601String(),

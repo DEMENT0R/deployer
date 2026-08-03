@@ -3,7 +3,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import DeployStatusBadge from '@/Components/DeployStatusBadge.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
-import { onMounted, onUnmounted } from 'vue';
+import { computed, onMounted, onUnmounted } from 'vue';
 
 const props = defineProps({
     connection: String,
@@ -14,6 +14,10 @@ const props = defineProps({
     active_deployments: Array,
     recent_deployments: Array,
 });
+
+const hasAbandoned = computed(() =>
+    props.active_deployments.some((item) => item.is_stale),
+);
 
 let pollInterval = null;
 
@@ -121,12 +125,29 @@ const forget = (uuid) => {
                                 <td class="px-4 py-2 text-sm">{{ item.user }}</td>
                                 <td class="px-4 py-2 text-sm">{{ item.action }}</td>
                                 <td class="px-4 py-2 text-sm">
-                                    <DeployStatusBadge :status="item.status" />
+                                    <div class="flex items-center gap-2">
+                                        <DeployStatusBadge :status="item.status" />
+                                        <span
+                                            v-if="item.is_stale"
+                                            class="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800"
+                                        >
+                                            Abandoned
+                                        </span>
+                                    </div>
                                 </td>
                                 <td class="px-4 py-2 text-sm text-gray-500">{{ item.current_step ?? '—' }}</td>
                             </tr>
                         </tbody>
                     </table>
+
+                    <p
+                        v-if="hasAbandoned"
+                        class="border-t border-gray-200 px-4 py-3 text-sm text-gray-500"
+                    >
+                        Abandoned means no sign of life for a while — the worker behind that
+                        deployment is most likely gone. Such a deployment no longer locks its
+                        instance, but its row stays open until someone closes it.
+                    </p>
                 </div>
 
                 <div class="overflow-hidden rounded-lg bg-white shadow-sm">
