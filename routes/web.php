@@ -72,6 +72,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('instances/{instance}/env', [AdminInstanceController::class, 'env'])->name('instances.env');
         Route::post('instances/{instance}/env', [AdminInstanceController::class, 'createEnv'])->name('instances.env.store');
         Route::put('instances/{instance}/env', [AdminInstanceController::class, 'updateEnv'])->name('instances.env.update');
+        Route::post('instances/{instance}/caches/clear', [AdminInstanceController::class, 'clearCaches'])
+            ->middleware('throttle:10,1')
+            ->name('instances.caches.clear');
         Route::get('instances/{instance}/duplicate', [AdminInstanceController::class, 'duplicate'])->name('instances.duplicate');
         Route::post('instances/{instance}/clone', [AdminInstanceController::class, 'clone'])->name('instances.clone');
         Route::resource('instances', AdminInstanceController::class)->except(['show']);

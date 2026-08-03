@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Enums\DeployAction;
 use App\Enums\DeployStatus;
 use App\Enums\UserRole;
+use App\Exceptions\CacheClearException;
 use App\Exceptions\EnvWriteException;
 use App\Exceptions\PathValidationException;
 use App\Http\Controllers\Controller;
@@ -16,6 +17,7 @@ use App\Jobs\DeployInstanceJob;
 use App\Models\Deployment;
 use App\Models\Instance;
 use App\Models\User;
+use App\Services\InstanceCacheService;
 use App\Services\InstanceEnvService;
 use Illuminate\Http\RedirectResponse;
 use Inertia\Inertia;
@@ -55,6 +57,7 @@ class InstanceController extends Controller
                 'id' => $instance->id,
                 'name' => $instance->name,
                 'path' => $instance->path,
+                'has_cache_command' => filled($instance->cache_command),
             ],
             'env' => $envService->inspect($instance),
         ]);
@@ -78,6 +81,7 @@ class InstanceController extends Controller
         UpdateInstanceEnvRequest $request,
         Instance $instance,
         InstanceEnvService $envService,
+        InstanceCacheService $cacheService,
     ): RedirectResponse {
         try {
             $changed = $envService->update($instance, $request->validated()['values']);
@@ -85,9 +89,42 @@ class InstanceController extends Controller
             return back()->withErrors(['env' => $exception->getMessage()]);
         }
 
-        return back()->with('success', $changed === []
-            ? 'Nothing to update.'
-            : 'Updated: '.implode(', ', $changed).'.');
+        if ($changed === []) {
+            return back()->with('success', 'Nothing to update.');
+        }
+
+        $message = 'Updated: '.implode(', ', $changed).'.';
+
+        // Пустая команда — это «чистку не делаем», а не ошибка: ровно так же её пропускает
+        // одноимённый шаг деплоя.
+        if (blank($instance->cache_command)) {
+            return back()->with('success', $message);
+        }
+
+        // Целевой проект с закэшированным конфигом новую БД не увидит: правка выглядела бы
+        // применённой, а стенд продолжал бы ходить в старую базу. Чистим сразу.
+        try {
+            $cacheService->clear($instance);
+        } catch (CacheClearException|PathValidationException $exception) {
+            // .env уже переписан — сорвавшаяся чистка не должна выглядеть как несохранённая правка.
+            return back()
+                ->with('success', $message)
+                ->withErrors(['cache' => 'Saved, but clearing caches failed: '.$exception->getMessage()]);
+        }
+
+        return back()->with('success', $message.' Caches cleared.');
+    }
+
+    /** Та же чистка кнопкой: `.env` могли поправить руками на хосте, мимо панели. */
+    public function clearCaches(Instance $instance, InstanceCacheService $cacheService): RedirectResponse
+    {
+        try {
+            $cacheService->clear($instance);
+        } catch (CacheClearException|PathValidationException $exception) {
+            return back()->withErrors(['cache' => $exception->getMessage()]);
+        }
+
+        return back()->with('success', 'Caches cleared.');
     }
 
     public function create(): Response
@@ -115,6 +152,7 @@ class InstanceController extends Controller
                 'git_remote' => $instance->git_remote,
                 'default_branch' => $instance->default_branch,
                 'composer_command' => $instance->composer_command,
+                'cache_command' => $instance->cache_command,
                 'migrate_command' => $instance->migrate_command,
                 'frontend_command' => $instance->frontend_command,
                 'allowed_path_prefix' => $instance->allowed_path_prefix,
@@ -174,6 +212,7 @@ class InstanceController extends Controller
                 'git_remote' => $instance->git_remote,
                 'default_branch' => $instance->default_branch,
                 'composer_command' => $instance->composer_command,
+                'cache_command' => $instance->cache_command,
                 'migrate_command' => $instance->migrate_command,
                 'frontend_command' => $instance->frontend_command,
                 'allowed_path_prefix' => $instance->allowed_path_prefix,

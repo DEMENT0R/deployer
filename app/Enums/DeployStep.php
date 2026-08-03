@@ -9,6 +9,7 @@ enum DeployStep: string
     case Rollback = 'rollback';
     case Git = 'git';
     case Composer = 'composer';
+    case Cache = 'cache';
     case Migrate = 'migrate';
     case Frontend = 'frontend';
 }

@@ -132,8 +132,9 @@ class InstanceController extends Controller
             'url' => $instance->url,
             'default_branch' => $instance->default_branch,
             'git_remote' => $instance->git_remote,
-            // Саму команду наружу не отдаём — странице хватает знания, есть ли что запускать.
+            // Сами команды наружу не отдаём — странице хватает знания, есть ли что запускать.
             'has_composer_command' => filled($instance->composer_command),
+            'has_cache_command' => filled($instance->cache_command),
         ];
     }
 }

@@ -12,11 +12,16 @@ return [
     | По умолчанию не тащим то, что ставится заново composer/frontend-шагами того же деплоя,
     | и мусор рантайма. `.env` исключён всегда: он копируется отдельно и с обнулёнными
     | DB_DATABASE/APP_URL. `.git` копируется — без него в копию нельзя деплоить.
+    |
+    | bootstrap/cache/ исключён по той же причине, что обнуляется DB_DATABASE: там лежит
+    | закэшированный конфиг оригинала, и копия с ним ходила бы в базу оригинала мимо
+    | собственного .env. packages.php/services.php оттуда не жалко — их пересоберёт
+    | composer-шаг того же деплоя, а без него Laravel допишет их сам при первой загрузке.
     */
     'copy_excludes' => array_values(array_filter(
         array_map('trim', explode(',', env(
             'DEPLOYER_COPY_EXCLUDES',
-            'node_modules/,vendor/,storage/logs/,storage/framework/cache/,storage/framework/sessions/,storage/framework/views/'
+            'node_modules/,vendor/,bootstrap/cache/,storage/logs/,storage/framework/cache/,storage/framework/sessions/,storage/framework/views/'
         )))
     )),
 

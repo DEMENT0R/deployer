@@ -424,6 +424,13 @@ onUnmounted(() => {
                             Composer
                         </SecondaryButton>
                         <SecondaryButton
+                            v-if="instance.has_cache_command"
+                            :disabled="isRunning"
+                            @click="deploy('cache')"
+                        >
+                            Clear caches
+                        </SecondaryButton>
+                        <SecondaryButton
                             :disabled="isRunning"
                             @click="deploy('migrate')"
                         >

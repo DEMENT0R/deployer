@@ -56,6 +56,22 @@ const placeholder = (variable) => {
 const page = usePage();
 const creating = ref(false);
 const createError = computed(() => page.props.errors?.env);
+const cacheError = computed(() => page.props.errors?.cache);
+
+const clearing = ref(false);
+
+const clearCaches = () => {
+    clearing.value = true;
+
+    router.post(
+        route('admin.instances.caches.clear', props.instance.id),
+        {},
+        {
+            preserveScroll: true,
+            onFinish: () => (clearing.value = false),
+        },
+    );
+};
 
 const createEnv = (source) => {
     creating.value = true;
@@ -190,16 +206,27 @@ const submit = () => {
                     </table>
 
                     <div class="border-t border-gray-200 px-4 py-3">
-                        <PrimaryButton :disabled="form.processing">Save</PrimaryButton>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <PrimaryButton :disabled="form.processing">Save</PrimaryButton>
+                            <SecondaryButton
+                                v-if="instance.has_cache_command"
+                                type="button"
+                                :disabled="clearing"
+                                @click="clearCaches"
+                            >
+                                {{ clearing ? '…' : 'Clear caches' }}
+                            </SecondaryButton>
+                        </div>
+                        <InputError class="mt-2" :message="cacheError" />
                     </div>
 
                     <div class="border-t border-gray-200 px-4 py-3 text-sm text-gray-500">
                         Only keys from <span class="font-mono">deployer.env_visible_keys</span> are shown and
                         editable; secrets are masked before leaving the server, so leave a masked field empty
                         to keep its current value. The previous file is kept as
-                        <span class="font-mono">.env.backup</span> next to it. If the target project caches
-                        its config, run <span class="font-mono">php artisan config:clear</span> there for the
-                        change to take effect.
+                        <span class="font-mono">.env.backup</span> next to it. Saving also runs the instance's
+                        cache command in the target project, so a cached config does not keep serving the old
+                        values; the button next to Save does the same on its own, for edits made on the host.
                         <template v-if="env.hidden_count">
                             {{ env.hidden_count }} other variable(s) in this file are not displayed and are
                             left untouched.

@@ -52,7 +52,7 @@ class DeployPathFailureTest extends TestCase
         $this->runDeployer($deployment);
 
         // Без шагов страница деплоя показывала бы пустой прогресс — падение должно быть видно.
-        $this->assertSame(['copy', 'composer', 'frontend'], array_keys($deployment->refresh()->steps ?? []));
+        $this->assertSame(['copy', 'composer', 'cache', 'frontend'], array_keys($deployment->refresh()->steps ?? []));
     }
 
     private function runDeployer(Deployment $deployment): void

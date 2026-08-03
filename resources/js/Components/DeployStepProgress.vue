@@ -16,6 +16,7 @@ const stepOrder = [
     'rollback',
     'git',
     'composer',
+    'cache',
     'migrate',
     'frontend',
 ];
@@ -26,6 +27,7 @@ const stepLabels = {
     rollback: 'Rollback',
     git: 'Git',
     composer: 'Composer',
+    cache: 'Caches',
     migrate: 'Migrate',
     frontend: 'Frontend',
 };

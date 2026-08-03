@@ -18,10 +18,14 @@ class DeployController extends Controller
     {
         $validated = $request->validated();
 
-        // Отдельный запуск composer при пустой команде иначе завершился бы «успехом» с шагом
+        // Отдельный запуск шага с пустой командой иначе завершился бы «успехом» с шагом
         // skipped — для явно нажатой кнопки это выглядит как молчаливый отказ.
         if ($validated['action'] === DeployAction::Composer->value && blank($instance->composer_command)) {
             return back()->withErrors(['deploy' => 'No composer command is set for this instance.']);
+        }
+
+        if ($validated['action'] === DeployAction::Cache->value && blank($instance->cache_command)) {
+            return back()->withErrors(['deploy' => 'No cache command is set for this instance.']);
         }
 
         // Check and insert must be atomic, otherwise two clicks both pass the check

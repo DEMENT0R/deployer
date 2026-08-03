@@ -14,6 +14,14 @@ use Throwable;
 
 class InstanceDeployer
 {
+    /**
+     * Шаги, у которых пустая команда — штатное «нечего делать», а не отказ: шаг помечается
+     * skipped, деплой идёт дальше. Кнопка такого шага отдельно блокируется в DeployController.
+     *
+     * @var list<DeployStep>
+     */
+    private const OPTIONAL_STEPS = [DeployStep::Composer, DeployStep::Cache];
+
     public function __construct(
         private readonly PathValidator $pathValidator,
         private readonly GitService $gitService,
@@ -45,7 +53,7 @@ class InstanceDeployer
                 : $this->pathValidator->resolve($instance);
 
             foreach ($action->steps() as $step) {
-                if ($step === DeployStep::Composer && blank($instance->composer_command)) {
+                if (in_array($step, self::OPTIONAL_STEPS, true) && blank($this->stepCommand($instance, $step))) {
                     $deployment->markStepSuccess($step);
                     $steps[$step->value] = 'skipped';
                     $deployment->update(['steps' => array_merge($deployment->steps ?? [], [$step->value => 'skipped'])]);
@@ -60,6 +68,7 @@ class InstanceDeployer
                         DeployStep::Rollback => $this->runRollback($deployment, $cwd, $onOutput),
                         DeployStep::Git => $this->runGit($instance, $deployment, $cwd, $onOutput),
                         DeployStep::Composer => $this->runComposer($instance, $cwd, $onOutput),
+                        DeployStep::Cache => $this->runCache($instance, $cwd, $onOutput),
                         DeployStep::Migrate => $this->runMigrate($instance, $cwd, $onOutput),
                         DeployStep::Frontend => $this->runFrontend($instance, $cwd, $onOutput),
                     };
@@ -193,6 +202,17 @@ class InstanceDeployer
         $this->processRunner->runShellOrFail($command, $cwd, $onOutput);
     }
 
+    private function runCache(Instance $instance, string $cwd, Closure $onOutput): void
+    {
+        $command = $instance->cache_command;
+
+        if (blank($command)) {
+            return;
+        }
+
+        $this->processRunner->runShellOrFail($command, $cwd, $onOutput);
+    }
+
     private function runMigrate(Instance $instance, string $cwd, Closure $onOutput): void
     {
         $this->processRunner->runShellOrFail($instance->migrate_command, $cwd, $onOutput);
@@ -201,5 +221,17 @@ class InstanceDeployer
     private function runFrontend(Instance $instance, string $cwd, Closure $onOutput): void
     {
         $this->processRunner->runShellOrFail($instance->frontend_command, $cwd, $onOutput);
+    }
+
+    /** Команда шага там, где шаг задаётся командой; у git/clone/copy/rollback своя логика. */
+    private function stepCommand(Instance $instance, DeployStep $step): ?string
+    {
+        return match ($step) {
+            DeployStep::Composer => $instance->composer_command,
+            DeployStep::Cache => $instance->cache_command,
+            DeployStep::Migrate => $instance->migrate_command,
+            DeployStep::Frontend => $instance->frontend_command,
+            default => null,
+        };
     }
 }

@@ -23,6 +23,7 @@ class Instance extends Model
         'git_remote',
         'default_branch',
         'composer_command',
+        'cache_command',
         'migrate_command',
         'frontend_command',
         'allowed_path_prefix',

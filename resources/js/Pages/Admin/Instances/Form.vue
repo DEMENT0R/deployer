@@ -36,6 +36,9 @@ const form = useForm({
     git_remote: source?.git_remote ?? 'origin',
     default_branch: source?.default_branch ?? 'main',
     composer_command: source?.composer_command ?? 'composer install --no-dev --no-interaction',
+    cache_command:
+        source?.cache_command ??
+        'php artisan config:clear && php artisan view:clear && php artisan route:clear',
     migrate_command: source?.migrate_command ?? 'php artisan migrate --force',
     frontend_command: source?.frontend_command ?? 'npm ci && npm run build',
     allowed_path_prefix: source?.allowed_path_prefix ?? '',
@@ -162,6 +165,22 @@ const toggleTester = (id) => {
                         <InputLabel for="composer_command" value="Composer command" />
                         <TextInput id="composer_command" v-model="form.composer_command" class="mt-1 block w-full" />
                         <InputError class="mt-2" :message="form.errors.composer_command" />
+                    </div>
+
+                    <div>
+                        <InputLabel for="cache_command" value="Cache command" />
+                        <TextInput id="cache_command" v-model="form.cache_command" class="mt-1 block w-full" />
+                        <p class="mt-1 text-xs text-gray-500">
+                            Runs after composer and before migrations, and after every
+                            <span class="font-mono">.env</span> edit made from the panel. Without it a
+                            project with a cached config keeps the old database no matter what
+                            <span class="font-mono">.env</span> says. Leave empty to skip the step —
+                            the button and the automatic run disappear with it. Add
+                            <span class="font-mono">php artisan cache:clear</span> if you need the
+                            application cache too; it needs a reachable database on the
+                            <span class="font-mono">database</span> driver.
+                        </p>
+                        <InputError class="mt-2" :message="form.errors.cache_command" />
                     </div>
 
                     <div>
