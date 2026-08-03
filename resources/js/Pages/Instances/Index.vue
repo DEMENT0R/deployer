@@ -1,13 +1,23 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import DeployStatusBadge from '@/Components/DeployStatusBadge.vue';
-import { Head, Link } from '@inertiajs/vue3';
+import { Head, Link, router } from '@inertiajs/vue3';
+import { onMounted } from 'vue';
 
 defineProps({
     instances: {
         type: Array,
         required: true,
     },
+    // id инстанса → имя БД из его .env. Приезжает отдельным запросом: см. Inertia::defer.
+    databases: {
+        type: Object,
+        default: null,
+    },
+});
+
+onMounted(() => {
+    router.reload({ only: ['databases'] });
 });
 </script>
 
@@ -50,6 +60,17 @@ defineProps({
                         </div>
                         <p class="truncate text-sm text-gray-500">
                             {{ instance.path }}
+                        </p>
+                        <p class="mt-1 truncate text-xs">
+                            <span class="text-gray-400">DB</span>
+                            <span v-if="!databases" class="text-gray-300">…</span>
+                            <span
+                                v-else-if="databases[instance.id]"
+                                class="font-mono text-gray-600"
+                            >
+                                {{ databases[instance.id] }}
+                            </span>
+                            <span v-else class="text-gray-400">unknown</span>
                         </p>
                         <p
                             v-if="instance.latest_deployment"

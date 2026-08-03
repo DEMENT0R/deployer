@@ -102,6 +102,39 @@ class InstanceEnvService
     }
 
     /**
+     * Имя БД целевого проекта — для карточки инстанса в списке. Полный inspect() там избыточен,
+     * а недоступный .env не повод ронять страницу: не прочитали — значит, показать нечего.
+     */
+    public function databaseName(Instance $instance): ?string
+    {
+        try {
+            $root = $this->pathValidator->resolve($instance);
+        } catch (PathValidationException) {
+            return null;
+        }
+
+        $path = $root.DIRECTORY_SEPARATOR.'.env';
+
+        if (! is_file($path) || ! is_readable($path)) {
+            return null;
+        }
+
+        if (filesize($path) > (int) config('deployer.env_max_size')) {
+            return null;
+        }
+
+        $contents = file_get_contents($path);
+
+        if ($contents === false) {
+            return null;
+        }
+
+        $database = $this->parse($contents)['DB_DATABASE'] ?? null;
+
+        return filled($database) ? $database : null;
+    }
+
+    /**
      * Заводит отсутствующий .env: пустым или копией .env.example. Существующий файл не трогаем —
      * перезапись «создающим» действием стоила бы боевых значений.
      *

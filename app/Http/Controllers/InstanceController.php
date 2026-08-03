@@ -6,6 +6,7 @@ use App\Http\Controllers\Concerns\FormatsDeployments;
 use App\Models\Deployment;
 use App\Models\Instance;
 use App\Services\Deploy\GitBranchResolver;
+use App\Services\InstanceEnvService;
 use App\Services\InstanceStatusService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -18,7 +19,7 @@ class InstanceController extends Controller
     /** Сколько последних деплоев показывать в истории на странице инстанса. */
     private const HISTORY_LIMIT = 20;
 
-    public function index(Request $request): Response
+    public function index(Request $request, InstanceEnvService $envService): Response
     {
         $this->authorize('viewAny', Instance::class);
 
@@ -26,11 +27,15 @@ class InstanceController extends Controller
             ->accessibleInstances()
             ->with(['deployments' => fn ($query) => $query->latest()->limit(1)])
             ->orderBy('name')
-            ->get()
-            ->map(fn (Instance $instance) => $this->formatInstanceSummary($instance));
+            ->get();
 
         return Inertia::render('Instances/Index', [
-            'instances' => $instances,
+            'instances' => $instances->map(fn (Instance $instance) => $this->formatInstanceSummary($instance)),
+            // Имя БД лежит в .env целевого проекта: поход в файловую систему по каждому инстансу,
+            // на недоступном пути ещё и небыстрый. Список карточек ждать этого не должен.
+            'databases' => Inertia::defer(fn () => $instances->mapWithKeys(
+                fn (Instance $instance) => [$instance->id => $envService->databaseName($instance)]
+            )),
         ]);
     }
 

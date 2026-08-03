@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Enums\DeployAction;
 use App\Enums\DeployStatus;
 use App\Enums\UserRole;
+use App\Http\Middleware\HandleInertiaRequests;
 use App\Models\Deployment;
 use App\Models\Instance;
 use App\Models\User;
@@ -15,6 +16,52 @@ use Tests\TestCase;
 class InstanceControllerTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_index_does_not_read_env_files_on_the_first_render(): void
+    {
+        $admin = User::factory()->create(['role' => UserRole::Admin]);
+        Instance::factory()->create();
+
+        $this->actingAs($admin)
+            ->get(route('instances.index'))
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->component('Instances/Index')
+                ->has('instances', 1)
+                // Чтение .env приезжает отдельным запросом и карточки не задерживает.
+                ->missing('databases')
+            );
+    }
+
+    public function test_index_reports_the_database_name_of_each_instance(): void
+    {
+        $admin = User::factory()->create(['role' => UserRole::Admin]);
+
+        $base = sys_get_temp_dir().'/deployer-index-'.uniqid();
+        mkdir($base, 0755, true);
+        file_put_contents($base.'/.env', "APP_ENV=testing\nDB_DATABASE=stage_alpha\n");
+        config(['deployer.allowed_path_prefixes' => [$base]]);
+
+        $withEnv = Instance::factory()->create(['path' => $base, 'allowed_path_prefix' => $base]);
+        // У этого инстанса каталога нет — карточка должна пережить это, а не уронить страницу.
+        $withoutEnv = Instance::factory()->create(['path' => '/var/www/does-not-exist']);
+
+        $databases = $this->actingAs($admin)
+            ->get(route('instances.index', ['only' => 'databases']), [
+                'X-Inertia' => 'true',
+                'X-Inertia-Version' => (new HandleInertiaRequests)->version(request()) ?? '',
+                'X-Inertia-Partial-Component' => 'Instances/Index',
+                'X-Inertia-Partial-Data' => 'databases',
+            ])
+            ->assertOk()
+            ->json('props.databases');
+
+        $this->assertSame('stage_alpha', $databases[$withEnv->id]);
+        $this->assertNull($databases[$withoutEnv->id]);
+
+        @unlink($base.'/.env');
+        @rmdir($base);
+    }
 
     public function test_show_reports_why_the_branch_list_is_empty(): void
     {
