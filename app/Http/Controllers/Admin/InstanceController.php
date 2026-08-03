@@ -99,6 +99,7 @@ class InstanceController extends Controller
         return Inertia::render('Admin/Instances/Form', [
             'instance' => null,
             // path/url обнуляем: копия должна лежать в своём каталоге и иметь свой URL.
+            // Имя screen-сессии и порт — тоже: они уникальны, копия поднимается своими.
             'prefill' => [
                 'source_instance_id' => $instance->id,
                 'source_path' => $instance->path,
@@ -113,6 +114,8 @@ class InstanceController extends Controller
                 'migrate_command' => $instance->migrate_command,
                 'frontend_command' => $instance->frontend_command,
                 'allowed_path_prefix' => $instance->allowed_path_prefix,
+                'screen_session' => null,
+                'serve_port' => null,
                 'is_active' => $instance->is_active,
                 'tester_ids' => $instance->users()->pluck('users.id'),
             ],
@@ -170,6 +173,8 @@ class InstanceController extends Controller
                 'migrate_command' => $instance->migrate_command,
                 'frontend_command' => $instance->frontend_command,
                 'allowed_path_prefix' => $instance->allowed_path_prefix,
+                'screen_session' => $instance->screen_session,
+                'serve_port' => $instance->serve_port,
                 'is_active' => $instance->is_active,
                 'tester_ids' => $instance->users->pluck('id'),
             ],

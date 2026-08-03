@@ -64,6 +64,73 @@ class InstanceStoreTest extends TestCase
             );
     }
 
+    public function test_screen_session_and_serve_port_are_saved_together(): void
+    {
+        $admin = User::factory()->create(['role' => UserRole::Admin]);
+
+        $this->actingAs($admin)
+            ->post(route('admin.instances.store'), $this->payload([
+                'screen_session' => 'laravel-test',
+                'serve_port' => '8080',
+            ]))
+            ->assertSessionHasNoErrors();
+
+        $instance = Instance::where('path', '/var/www/new')->firstOrFail();
+        $this->assertSame('laravel-test', $instance->screen_session);
+        $this->assertSame(8080, $instance->serve_port);
+    }
+
+    public function test_a_serve_port_without_a_session_name_is_rejected(): void
+    {
+        $admin = User::factory()->create(['role' => UserRole::Admin]);
+
+        $this->actingAs($admin)
+            ->post(route('admin.instances.store'), $this->payload(['serve_port' => '8080']))
+            ->assertSessionHasErrors('screen_session');
+    }
+
+    public function test_two_instances_cannot_share_a_session_name_or_a_port(): void
+    {
+        $admin = User::factory()->create(['role' => UserRole::Admin]);
+        Instance::factory()->create(['screen_session' => 'laravel-test', 'serve_port' => 8080]);
+
+        $this->actingAs($admin)
+            ->post(route('admin.instances.store'), $this->payload([
+                'screen_session' => 'laravel-test',
+                'serve_port' => '8080',
+            ]))
+            ->assertSessionHasErrors(['screen_session', 'serve_port']);
+    }
+
+    public function test_a_session_name_with_shell_characters_is_rejected(): void
+    {
+        $admin = User::factory()->create(['role' => UserRole::Admin]);
+
+        $this->actingAs($admin)
+            ->post(route('admin.instances.store'), $this->payload([
+                'screen_session' => 'test; rm -rf /',
+                'serve_port' => '8080',
+            ]))
+            ->assertSessionHasErrors('screen_session');
+    }
+
+    public function test_duplicate_does_not_prefill_the_session_name_or_port(): void
+    {
+        $admin = User::factory()->create(['role' => UserRole::Admin]);
+        $instance = Instance::factory()->create([
+            'screen_session' => 'laravel-test',
+            'serve_port' => 8080,
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('admin.instances.duplicate', $instance))
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->where('prefill.screen_session', null)
+                ->where('prefill.serve_port', null)
+            );
+    }
+
     public function test_tester_cannot_duplicate(): void
     {
         $tester = User::factory()->create(['role' => UserRole::Tester]);

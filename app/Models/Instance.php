@@ -26,6 +26,8 @@ class Instance extends Model
         'migrate_command',
         'frontend_command',
         'allowed_path_prefix',
+        'screen_session',
+        'serve_port',
         'is_active',
     ];
 
@@ -33,8 +35,15 @@ class Instance extends Model
     {
         return [
             'platform' => Platform::class,
+            'serve_port' => 'integer',
             'is_active' => 'boolean',
         ];
+    }
+
+    /** Стенд можно поднять из панели, только когда известно и имя сессии, и порт. */
+    public function isServable(): bool
+    {
+        return filled($this->screen_session) && filled($this->serve_port);
     }
 
     public function users(): BelongsToMany

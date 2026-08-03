@@ -61,6 +61,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::middleware('admin')->prefix('admin')->name('admin.')->group(function () {
         Route::get('queues', [AdminQueueController::class, 'index'])->name('queues.index');
         Route::get('screens', [AdminScreenController::class, 'index'])->name('screens.index');
+        Route::post('screens', [AdminScreenController::class, 'store'])
+            ->middleware('throttle:10,1')
+            ->name('screens.store');
+        Route::delete('screens', [AdminScreenController::class, 'destroy'])
+            ->middleware('throttle:10,1')
+            ->name('screens.destroy');
         Route::post('queues/failed/{uuid}/retry', [AdminQueueController::class, 'retry'])->name('queues.retry');
         Route::delete('queues/failed/{uuid}', [AdminQueueController::class, 'forget'])->name('queues.forget');
         Route::get('instances/{instance}/env', [AdminInstanceController::class, 'env'])->name('instances.env');

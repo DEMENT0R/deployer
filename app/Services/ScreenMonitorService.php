@@ -68,6 +68,25 @@ class ScreenMonitorService
         return $this->build($this->parse($result->output), $onlyUser);
     }
 
+    /**
+     * Живёт ли сессия с таким именем. Список скрытых пользователей здесь не участвует:
+     * он про то, что показывать, а не про то, что существует.
+     */
+    public function exists(string $name): bool
+    {
+        if (! $this->supported()) {
+            return false;
+        }
+
+        try {
+            $result = $this->runner->run(self::PS_COMMAND, base_path(), null, self::TIMEOUT);
+        } catch (Throwable) {
+            return false;
+        }
+
+        return in_array($name, array_column($this->parse($result->output), 'name'), true);
+    }
+
     /** Вынесено методом, чтобы разбор вывода `ps` тестировался и на Windows-машине разработчика. */
     protected function supported(): bool
     {

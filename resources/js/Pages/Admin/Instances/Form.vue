@@ -39,6 +39,8 @@ const form = useForm({
     migrate_command: source?.migrate_command ?? 'php artisan migrate --force',
     frontend_command: source?.frontend_command ?? 'npm ci && npm run build',
     allowed_path_prefix: source?.allowed_path_prefix ?? '',
+    screen_session: source?.screen_session ?? '',
+    serve_port: source?.serve_port ?? '',
     is_active: source?.is_active ?? true,
     tester_ids: source?.tester_ids ?? [],
     source_instance_id: props.prefill?.source_instance_id ?? null,
@@ -179,6 +181,39 @@ const toggleTester = (id) => {
                         <TextInput id="allowed_path_prefix" v-model="form.allowed_path_prefix" class="mt-1 block w-full" />
                         <InputError class="mt-2" :message="form.errors.allowed_path_prefix" />
                     </div>
+
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <div>
+                            <InputLabel for="screen_session" value="Screen session" />
+                            <TextInput
+                                id="screen_session"
+                                v-model="form.screen_session"
+                                class="mt-1 block w-full"
+                                placeholder="instance-1"
+                            />
+                            <InputError class="mt-2" :message="form.errors.screen_session" />
+                        </div>
+                        <div>
+                            <InputLabel for="serve_port" value="Serve port" />
+                            <TextInput
+                                id="serve_port"
+                                v-model="form.serve_port"
+                                type="number"
+                                min="1"
+                                max="65535"
+                                class="mt-1 block w-full"
+                                placeholder="8080"
+                            />
+                            <InputError class="mt-2" :message="form.errors.serve_port" />
+                        </div>
+                    </div>
+                    <p class="-mt-4 text-xs text-gray-500">
+                        Name of the screen session running this instance's dev server, and the port it
+                        listens on. Set both to start and stop the instance from
+                        <span class="font-mono">Admin → Screens</span>; the session is also matched to
+                        this instance by name in the session list. Leave empty if the instance is not
+                        served from a screen session.
+                    </p>
 
                     <div class="flex items-center gap-2">
                         <Checkbox id="is_active" v-model:checked="form.is_active" />
