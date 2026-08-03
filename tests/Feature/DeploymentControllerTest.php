@@ -98,6 +98,40 @@ class DeploymentControllerTest extends TestCase
         $this->assertSame(DeployStatus::Success, $deployment->refresh()->status);
     }
 
+    /**
+     * Инстанс могли выключить, пока деплой висел; deploy-политика на такой инстанс не пускает,
+     * и строку было бы нечем закрыть — а видна она как раз на Admin → Queues.
+     */
+    public function test_admin_can_cancel_a_deployment_of_a_disabled_instance(): void
+    {
+        $admin = User::factory()->create(['role' => UserRole::Admin]);
+        $instance = Instance::factory()->create(['is_active' => false]);
+
+        $deployment = $this->deployment($instance, $admin, DeployStatus::Running);
+
+        $this->actingAs($admin)
+            ->post(route('instances.deployments.cancel', [$instance, $deployment]))
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame(DeployStatus::Failed, $deployment->refresh()->status);
+    }
+
+    public function test_tester_cannot_cancel_a_deployment_of_a_disabled_instance(): void
+    {
+        $tester = User::factory()->create(['role' => UserRole::Tester]);
+        $admin = User::factory()->create(['role' => UserRole::Admin]);
+        $instance = Instance::factory()->create(['is_active' => false]);
+        $instance->users()->attach($tester);
+
+        $deployment = $this->deployment($instance, $admin, DeployStatus::Running);
+
+        $this->actingAs($tester)
+            ->post(route('instances.deployments.cancel', [$instance, $deployment]))
+            ->assertForbidden();
+
+        $this->assertSame(DeployStatus::Running, $deployment->refresh()->status);
+    }
+
     public function test_tester_cannot_cancel_a_deployment_of_an_unassigned_instance(): void
     {
         $tester = User::factory()->create(['role' => UserRole::Tester]);

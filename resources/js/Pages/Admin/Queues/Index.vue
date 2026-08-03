@@ -2,8 +2,9 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import DeployStatusBadge from '@/Components/DeployStatusBadge.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
-import { Head, Link, router } from '@inertiajs/vue3';
-import { computed, onMounted, onUnmounted } from 'vue';
+import DangerButton from '@/Components/DangerButton.vue';
+import { Head, Link, router, usePage } from '@inertiajs/vue3';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 
 const props = defineProps({
     connection: String,
@@ -19,6 +20,10 @@ const hasAbandoned = computed(() =>
     props.active_deployments.some((item) => item.is_stale),
 );
 
+const page = usePage();
+const cancelError = computed(() => page.props.errors?.deploy);
+const cancelling = ref(null);
+
 let pollInterval = null;
 
 onMounted(() => {
@@ -30,6 +35,24 @@ onMounted(() => {
 onUnmounted(() => {
     if (pollInterval) clearInterval(pollInterval);
 });
+
+// Отмена правит только запись в БД: живой процесс на хосте она не убивает (см. README).
+const cancel = (item) => {
+    if (!confirm(`Mark deployment #${item.id} as failed?`)) {
+        return;
+    }
+
+    cancelling.value = item.id;
+
+    router.post(
+        route('instances.deployments.cancel', [item.instance_id, item.id]),
+        {},
+        {
+            preserveScroll: true,
+            onFinish: () => (cancelling.value = null),
+        },
+    );
+};
 
 const retry = (uuid) => {
     router.post(route('admin.queues.retry', uuid), {}, { preserveScroll: true });
@@ -100,6 +123,13 @@ const forget = (uuid) => {
                     <div class="border-b border-gray-200 px-4 py-3 font-medium text-gray-900">
                         Active deployments
                     </div>
+
+                    <p
+                        v-if="cancelError"
+                        class="border-b border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
+                    >
+                        {{ cancelError }}
+                    </p>
                     <table class="min-w-full divide-y divide-gray-200">
                         <thead class="bg-gray-50">
                             <tr>
@@ -109,6 +139,7 @@ const forget = (uuid) => {
                                 <th class="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">Action</th>
                                 <th class="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">Status</th>
                                 <th class="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">Step</th>
+                                <th class="px-4 py-2"></th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-200">
@@ -136,6 +167,15 @@ const forget = (uuid) => {
                                     </div>
                                 </td>
                                 <td class="px-4 py-2 text-sm text-gray-500">{{ item.current_step ?? '—' }}</td>
+                                <td class="px-4 py-2 text-right">
+                                    <DangerButton
+                                        type="button"
+                                        :disabled="cancelling === item.id"
+                                        @click="cancel(item)"
+                                    >
+                                        {{ cancelling === item.id ? '…' : 'Cancel' }}
+                                    </DangerButton>
+                                </td>
                             </tr>
                         </tbody>
                     </table>
@@ -146,7 +186,8 @@ const forget = (uuid) => {
                     >
                         Abandoned means no sign of life for a while — the worker behind that
                         deployment is most likely gone. Such a deployment no longer locks its
-                        instance, but its row stays open until someone closes it.
+                        instance, but its row stays open until Cancel closes it. Cancel only
+                        marks the row as failed; a process still alive on the host keeps running.
                     </p>
                 </div>
 

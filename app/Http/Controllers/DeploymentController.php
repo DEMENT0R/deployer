@@ -46,7 +46,12 @@ class DeploymentController extends Controller
      */
     public function cancel(Request $request, Instance $instance, Deployment $deployment): RedirectResponse
     {
-        $this->authorize('deploy', $instance);
+        // Админу отмена нужна и на выключенном инстансе: deploy-политика требует is_active,
+        // и строку зависшего деплоя на отключённом стенде иначе нечем закрыть — а видна она
+        // на Admin → Queues, где чистить такие строки и приходится.
+        if (! $request->user()->isAdmin()) {
+            $this->authorize('deploy', $instance);
+        }
 
         if (! in_array($deployment->status, [DeployStatus::Pending, DeployStatus::Running], true)) {
             return back()->withErrors(['deploy' => 'This deployment has already finished.']);
