@@ -6,6 +6,7 @@ import FlashMessage from '@/Components/FlashMessage.vue';
 import NavLink from '@/Components/NavLink.vue';
 import NotificationBell from '@/Components/NotificationBell.vue';
 import ResponsiveNavLink from '@/Components/ResponsiveNavLink.vue';
+import ThemeToggle from '@/Components/ThemeToggle.vue';
 import { Link } from '@inertiajs/vue3';
 
 const showingNavigationDropdown = ref(false);
@@ -13,9 +14,9 @@ const showingNavigationDropdown = ref(false);
 
 <template>
     <div>
-        <div class="min-h-screen bg-gray-100">
+        <div class="min-h-screen bg-gray-100 dark:bg-gray-900">
             <nav
-                class="border-b border-gray-100 bg-white"
+                class="border-b border-gray-100 bg-white dark:border-gray-700 dark:bg-gray-800"
             >
                 <!-- Primary Navigation Menu -->
                 <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -25,7 +26,7 @@ const showingNavigationDropdown = ref(false);
                             <div class="flex shrink-0 items-center">
                                 <Link
                                     :href="route('instances.index')"
-                                    class="text-lg font-semibold text-gray-800"
+                                    class="text-lg font-semibold text-gray-800 dark:text-gray-200"
                                 >
                                     {{ $page.props.appName }}
                                 </Link>
@@ -60,8 +61,8 @@ const showingNavigationDropdown = ref(false);
                                             class="inline-flex h-[66px] items-center border-b-2 px-1 pt-1 text-sm font-medium leading-5 transition duration-150 ease-in-out focus:outline-none"
                                             :class="
                                                 route().current('admin.*')
-                                                    ? 'border-indigo-400 text-gray-900'
-                                                    : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                                                    ? 'border-indigo-400 text-gray-900 dark:border-indigo-500 dark:text-gray-100'
+                                                    : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 dark:text-gray-400 dark:hover:border-gray-600 dark:hover:text-gray-300'
                                             "
                                         >
                                             Admin
@@ -98,6 +99,7 @@ const showingNavigationDropdown = ref(false);
                         </div>
 
                         <div class="hidden sm:ms-6 sm:flex sm:items-center">
+                            <ThemeToggle />
                             <NotificationBell />
 
                             <!-- Settings Dropdown -->
@@ -107,7 +109,7 @@ const showingNavigationDropdown = ref(false);
                                         <span class="inline-flex rounded-md">
                                             <button
                                                 type="button"
-                                                class="inline-flex items-center rounded-md border border-transparent bg-white px-3 py-2 text-sm font-medium leading-4 text-gray-500 transition duration-150 ease-in-out hover:text-gray-700 focus:outline-none"
+                                                class="inline-flex items-center rounded-md border border-transparent bg-white px-3 py-2 text-sm font-medium leading-4 text-gray-500 transition duration-150 ease-in-out hover:text-gray-700 focus:outline-none dark:bg-gray-800 dark:text-gray-400 dark:hover:text-gray-300"
                                             >
                                                 {{ $page.props.auth.user.name }}
 
@@ -147,13 +149,14 @@ const showingNavigationDropdown = ref(false);
 
                         <!-- Hamburger -->
                         <div class="-me-2 flex items-center gap-1 sm:hidden">
+                            <ThemeToggle />
                             <NotificationBell />
                             <button
                                 @click="
                                     showingNavigationDropdown =
                                         !showingNavigationDropdown
                                 "
-                                class="inline-flex items-center justify-center rounded-md p-2 text-gray-400 transition duration-150 ease-in-out hover:bg-gray-100 hover:text-gray-500 focus:bg-gray-100 focus:text-gray-500 focus:outline-none"
+                                class="inline-flex items-center justify-center rounded-md p-2 text-gray-400 transition duration-150 ease-in-out hover:bg-gray-100 hover:text-gray-500 focus:bg-gray-100 focus:text-gray-500 focus:outline-none dark:text-gray-500 dark:hover:bg-gray-900 dark:hover:text-gray-400 dark:focus:bg-gray-900 dark:focus:text-gray-400"
                             >
                                 <svg
                                     class="h-6 w-6"
@@ -211,9 +214,9 @@ const showingNavigationDropdown = ref(false);
                             Activity
                         </ResponsiveNavLink>
                         <template v-if="$page.props.auth.user?.is_admin">
-                            <div class="mt-2 border-t border-gray-200 pt-2">
+                            <div class="mt-2 border-t border-gray-200 pt-2 dark:border-gray-600">
                                 <div
-                                    class="px-4 py-1 text-xs font-semibold uppercase tracking-wide text-gray-400"
+                                    class="px-4 py-1 text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500"
                                 >
                                     Admin
                                 </div>
@@ -247,15 +250,15 @@ const showingNavigationDropdown = ref(false);
 
                     <!-- Responsive Settings Options -->
                     <div
-                        class="border-t border-gray-200 pb-1 pt-4"
+                        class="border-t border-gray-200 pb-1 pt-4 dark:border-gray-600"
                     >
                         <div class="px-4">
                             <div
-                                class="text-base font-medium text-gray-800"
+                                class="text-base font-medium text-gray-800 dark:text-gray-200"
                             >
                                 {{ $page.props.auth.user.name }}
                             </div>
-                            <div class="text-sm font-medium text-gray-500">
+                            <div class="text-sm font-medium text-gray-500 dark:text-gray-400">
                                 {{ $page.props.auth.user.email }}
                             </div>
                         </div>
@@ -278,7 +281,7 @@ const showingNavigationDropdown = ref(false);
 
             <!-- Page Heading -->
             <header
-                class="bg-white shadow"
+                class="bg-white shadow dark:bg-gray-800"
                 v-if="$slots.header"
             >
                 <div class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">

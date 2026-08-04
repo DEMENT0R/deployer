@@ -43,10 +43,11 @@ const icon = (status) => {
 };
 
 const statusClass = (status) => {
-    if (status === 'success' || status === 'skipped') return 'text-green-600';
-    if (status === 'failed') return 'text-red-600';
-    if (status === 'running') return 'text-blue-600';
-    return 'text-gray-400';
+    if (status === 'success' || status === 'skipped')
+        return 'text-green-600 dark:text-green-400';
+    if (status === 'failed') return 'text-red-600 dark:text-red-400';
+    if (status === 'running') return 'text-blue-600 dark:text-blue-400';
+    return 'text-gray-400 dark:text-gray-500';
 };
 </script>
 

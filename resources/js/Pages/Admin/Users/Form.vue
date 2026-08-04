@@ -36,7 +36,7 @@ const submit = () => {
 
     <AuthenticatedLayout>
         <template #header>
-            <h2 class="text-xl font-semibold leading-tight text-gray-800">
+            <h2 class="text-xl font-semibold leading-tight text-gray-800 dark:text-gray-200">
                 {{ isEdit ? 'Edit User' : 'Create User' }}
             </h2>
         </template>
@@ -44,7 +44,7 @@ const submit = () => {
         <div class="py-12">
             <div class="mx-auto max-w-xl sm:px-6 lg:px-8">
                 <form
-                    class="space-y-6 rounded-lg bg-white p-6 shadow-sm"
+                    class="space-y-6 rounded-lg bg-white p-6 shadow-sm dark:bg-gray-800"
                     @submit.prevent="submit"
                 >
                     <div>
@@ -70,7 +70,7 @@ const submit = () => {
                         <select
                             id="role"
                             v-model="form.role"
-                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
+                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-300"
                         >
                             <option value="admin">Admin</option>
                             <option value="tester">Tester</option>

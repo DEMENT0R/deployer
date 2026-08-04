@@ -325,10 +325,10 @@ onUnmounted(() => {
         <template #header>
             <div class="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                    <h2 class="text-xl font-semibold leading-tight text-gray-800">
+                    <h2 class="text-xl font-semibold leading-tight text-gray-800 dark:text-gray-200">
                         {{ instance.name }}
                     </h2>
-                    <p class="mt-1 text-sm text-gray-500">{{ instance.path }}</p>
+                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ instance.path }}</p>
                 </div>
                 <div v-if="instance.url" class="flex items-center gap-3">
                     <HealthBadge :health="health" :checking="healthChecking" />
@@ -343,7 +343,7 @@ onUnmounted(() => {
                         :href="instance.url"
                         target="_blank"
                         rel="noopener noreferrer"
-                        class="text-sm font-medium text-indigo-600 hover:text-indigo-800"
+                        class="text-sm font-medium text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300"
                     >
                         Open ↗
                     </a>
@@ -353,12 +353,12 @@ onUnmounted(() => {
 
         <div class="py-12">
             <div class="mx-auto max-w-4xl space-y-6 sm:px-6 lg:px-8">
-                <div class="rounded-lg bg-white p-6 shadow-sm">
+                <div class="rounded-lg bg-white p-6 shadow-sm dark:bg-gray-800">
                     <div class="mb-4 flex flex-wrap items-end gap-3">
                         <div class="min-w-[200px] flex-1">
                             <label
                                 for="branch"
-                                class="mb-1 block text-sm font-medium text-gray-700"
+                                class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300"
                             >
                                 Branch
                             </label>
@@ -366,7 +366,7 @@ onUnmounted(() => {
                                 <select
                                     id="branch"
                                     v-model="selectedBranch"
-                                    class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                    class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-300"
                                     :disabled="isRunning"
                                 >
                                     <option value="" disabled>
@@ -390,13 +390,13 @@ onUnmounted(() => {
                             </div>
                             <p
                                 v-if="currentBranch"
-                                class="mt-1 text-xs text-gray-500"
+                                class="mt-1 text-xs text-gray-500 dark:text-gray-400"
                             >
                                 Current: {{ currentBranch }}
                             </p>
                             <p
                                 v-if="refreshError"
-                                class="mt-1 whitespace-pre-line break-words text-xs text-red-600"
+                                class="mt-1 whitespace-pre-line break-words text-xs text-red-600 dark:text-red-400"
                             >
                                 {{ refreshError }}
                             </p>
@@ -459,14 +459,14 @@ onUnmounted(() => {
 
                 <div
                     v-if="deployment"
-                    class="rounded-lg bg-white p-6 shadow-sm"
+                    class="rounded-lg bg-white p-6 shadow-sm dark:bg-gray-800"
                 >
                     <div class="mb-4 flex items-center justify-between">
-                        <h3 class="font-medium text-gray-900">Deployment</h3>
+                        <h3 class="font-medium text-gray-900 dark:text-gray-100">Deployment</h3>
                         <div class="flex items-center gap-3">
                             <span
                                 v-if="isStale"
-                                class="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800"
+                                class="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-900/40 dark:text-amber-300"
                             >
                                 Abandoned
                             </span>
@@ -484,7 +484,7 @@ onUnmounted(() => {
 
                     <p
                         v-if="deployment.queue_stuck"
-                        class="mb-4 rounded-md bg-amber-50 px-4 py-3 text-sm text-amber-800"
+                        class="mb-4 rounded-md bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:bg-amber-900/20 dark:text-amber-300"
                     >
                         Queued for {{ deployment.queued_seconds }}s and still not
                         picked up — check that <code>php artisan queue:work</code>
@@ -493,7 +493,7 @@ onUnmounted(() => {
 
                     <p
                         v-else-if="isStale"
-                        class="mb-4 rounded-md bg-amber-50 px-4 py-3 text-sm text-amber-800"
+                        class="mb-4 rounded-md bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:bg-amber-900/20 dark:text-amber-300"
                     >
                         No sign of life from this deployment for a while — the
                         worker probably died. The instance is no longer locked, so
@@ -515,7 +515,7 @@ onUnmounted(() => {
 
                 <Deferred data="gitStatus">
                     <template #fallback>
-                        <div class="rounded-lg bg-white p-6 text-sm text-gray-500 shadow-sm">
+                        <div class="rounded-lg bg-white p-6 text-sm text-gray-500 shadow-sm dark:bg-gray-800 dark:text-gray-400">
                             Reading the working tree…
                         </div>
                     </template>
@@ -535,13 +535,13 @@ onUnmounted(() => {
             <div v-if="logDeployment" class="p-6">
                 <div class="mb-4 flex items-start justify-between gap-4">
                     <div>
-                        <h3 class="font-medium text-gray-900">
+                        <h3 class="font-medium text-gray-900 dark:text-gray-100">
                             {{ logDeployment.action }}
-                            <span class="font-mono text-sm text-gray-500">
+                            <span class="font-mono text-sm text-gray-500 dark:text-gray-400">
                                 {{ logDeployment.branch ?? '—' }}
                             </span>
                         </h3>
-                        <p class="mt-1 text-xs text-gray-500">
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
                             #{{ logDeployment.id }} ·
                             {{ logDeployment.user ?? '—' }} ·
                             {{
@@ -572,11 +572,11 @@ onUnmounted(() => {
                     :loading="commitsLoading"
                 />
 
-                <p v-if="logError" class="mb-2 text-sm text-red-600">
+                <p v-if="logError" class="mb-2 text-sm text-red-600 dark:text-red-400">
                     {{ logError }}
                 </p>
 
-                <p v-if="logLoading" class="text-sm text-gray-500">
+                <p v-if="logLoading" class="text-sm text-gray-500 dark:text-gray-400">
                     Loading the log…
                 </p>
 

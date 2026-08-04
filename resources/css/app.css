@@ -1,3 +1,15 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+    /* Нативные контролы (список select, скроллбары, автозаполнение) красит браузер,
+       а не Tailwind — без color-scheme они остаются светлыми поверх тёмной страницы. */
+    :root {
+        color-scheme: light;
+    }
+
+    :root.dark {
+        color-scheme: dark;
+    }
+}

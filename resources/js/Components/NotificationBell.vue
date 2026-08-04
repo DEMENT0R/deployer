@@ -112,7 +112,7 @@ onUnmounted(() => document.removeEventListener('keydown', closeOnEscape));
     <div class="relative">
         <button
             type="button"
-            class="relative inline-flex items-center rounded-md p-2 text-gray-500 transition hover:text-gray-700 focus:outline-none"
+            class="relative inline-flex items-center rounded-md p-2 text-gray-500 transition hover:text-gray-700 focus:outline-none dark:text-gray-400 dark:hover:text-gray-200"
             :aria-label="
                 unread ? `Notifications, ${unread} unread` : 'Notifications'
             "
@@ -148,49 +148,52 @@ onUnmounted(() => document.removeEventListener('keydown', closeOnEscape));
 
         <div
             v-show="open"
-            class="absolute z-50 mt-2 w-80 overflow-hidden rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 ltr:end-0 rtl:start-0"
+            class="absolute z-50 mt-2 w-80 overflow-hidden rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 ltr:end-0 rtl:start-0 dark:bg-gray-700 dark:ring-white dark:ring-opacity-10"
         >
             <div
-                class="flex items-baseline justify-between border-b border-gray-200 px-4 py-2"
+                class="flex items-baseline justify-between border-b border-gray-200 px-4 py-2 dark:border-gray-600"
             >
-                <span class="text-sm font-medium text-gray-900">
+                <span class="text-sm font-medium text-gray-900 dark:text-gray-100">
                     Notifications
                 </span>
                 <button
                     v-if="unread > 0"
                     type="button"
-                    class="text-xs text-indigo-600 hover:text-indigo-800"
+                    class="text-xs text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300"
                     @click="markAllRead"
                 >
                     Mark all read
                 </button>
             </div>
 
-            <p v-if="loading" class="px-4 py-3 text-sm text-gray-500">
+            <p v-if="loading" class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">
                 Loading…
             </p>
 
-            <p v-else-if="error" class="px-4 py-3 text-sm text-red-600">
+            <p v-else-if="error" class="px-4 py-3 text-sm text-red-600 dark:text-red-400">
                 {{ error }}
             </p>
 
             <p
                 v-else-if="items.length === 0"
-                class="px-4 py-3 text-sm text-gray-500"
+                class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400"
             >
                 Nothing here yet.
             </p>
 
-            <ul v-else class="max-h-80 divide-y divide-gray-100 overflow-y-auto">
+            <ul
+                v-else
+                class="max-h-80 divide-y divide-gray-100 overflow-y-auto dark:divide-gray-600"
+            >
                 <li v-for="item in items" :key="item.id">
                     <button
                         type="button"
-                        class="block w-full px-4 py-2 text-start transition hover:bg-gray-50"
-                        :class="{ 'bg-indigo-50/60': !item.read }"
+                        class="block w-full px-4 py-2 text-start transition hover:bg-gray-50 dark:hover:bg-gray-600"
+                        :class="{ 'bg-indigo-50/60 dark:bg-indigo-900/30': !item.read }"
                         @click="openItem(item)"
                     >
                         <div class="flex items-baseline justify-between gap-2">
-                            <span class="truncate text-sm text-gray-900">
+                            <span class="truncate text-sm text-gray-900 dark:text-gray-100">
                                 {{ label(item) }}
                             </span>
                             <DeployStatusBadge
@@ -198,7 +201,7 @@ onUnmounted(() => document.removeEventListener('keydown', closeOnEscape));
                                 :status="item.data.status"
                             />
                         </div>
-                        <span class="text-xs text-gray-500">
+                        <span class="text-xs text-gray-500 dark:text-gray-400">
                             {{ relativeTime(item.created_at) }}
                         </span>
                     </button>

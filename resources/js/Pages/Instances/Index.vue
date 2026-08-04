@@ -26,7 +26,7 @@ onMounted(() => {
 
     <AuthenticatedLayout>
         <template #header>
-            <h2 class="text-xl font-semibold leading-tight text-gray-800">
+            <h2 class="text-xl font-semibold leading-tight text-gray-800 dark:text-gray-200">
                 Instances
             </h2>
         </template>
@@ -35,7 +35,7 @@ onMounted(() => {
             <div class="mx-auto max-w-7xl sm:px-6 lg:px-8">
                 <div
                     v-if="instances.length === 0"
-                    class="rounded-lg bg-white p-6 text-gray-500 shadow-sm"
+                    class="rounded-lg bg-white p-6 text-gray-500 shadow-sm dark:bg-gray-800 dark:text-gray-400"
                 >
                     No instances available.
                 </div>
@@ -44,12 +44,12 @@ onMounted(() => {
                     <div
                         v-for="instance in instances"
                         :key="instance.id"
-                        class="rounded-lg border border-gray-200 bg-white p-5 shadow-sm transition hover:border-gray-300 hover:shadow"
+                        class="rounded-lg border border-gray-200 bg-white p-5 shadow-sm transition hover:border-gray-300 hover:shadow dark:border-gray-700 dark:bg-gray-800 dark:hover:border-gray-600"
                     >
                         <div class="mb-2 flex items-start justify-between gap-2">
                             <Link
                                 :href="route('instances.show', instance.id)"
-                                class="font-medium text-gray-900 hover:text-indigo-700"
+                                class="font-medium text-gray-900 hover:text-indigo-700 dark:text-gray-100 dark:hover:text-indigo-400"
                             >
                                 {{ instance.name }}
                             </Link>
@@ -58,10 +58,10 @@ onMounted(() => {
                                 :status="instance.latest_deployment.status"
                             />
                         </div>
-                        <p class="truncate text-sm text-gray-500">
+                        <p class="truncate text-sm text-gray-500 dark:text-gray-400">
                             {{ instance.path }}
                         </p>
-                        <div class="mt-3 space-y-1 text-xs text-gray-400">
+                        <div class="mt-3 space-y-1 text-xs text-gray-400 dark:text-gray-500">
                             <p v-if="instance.latest_deployment">
                                 Last: {{ instance.latest_deployment.action }}
                                 <span v-if="instance.latest_deployment.branch">
@@ -70,7 +70,7 @@ onMounted(() => {
                             </p>
                             <p class="truncate">
                                 DB:
-                                <span v-if="!databases" class="text-gray-300">…</span>
+                                <span v-if="!databases" class="text-gray-300 dark:text-gray-600">…</span>
                                 <span v-else>{{ databases[instance.id] ?? 'unknown' }}</span>
                             </p>
                         </div>
@@ -79,7 +79,7 @@ onMounted(() => {
                             :href="instance.url"
                             target="_blank"
                             rel="noopener noreferrer"
-                            class="mt-3 inline-block truncate text-xs font-medium text-indigo-600 hover:text-indigo-800"
+                            class="mt-3 inline-block truncate text-xs font-medium text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300"
                         >
                             {{ instance.url }} ↗
                         </a>

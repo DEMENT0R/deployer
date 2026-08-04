@@ -53,7 +53,7 @@ const download = () => {
         <div class="mb-1 flex justify-end gap-3 text-xs">
             <button
                 type="button"
-                class="text-gray-500 hover:text-gray-800 disabled:opacity-50"
+                class="text-gray-500 hover:text-gray-800 disabled:opacity-50 dark:text-gray-400 dark:hover:text-gray-200"
                 :disabled="!output"
                 @click="copy"
             >
@@ -61,7 +61,7 @@ const download = () => {
             </button>
             <button
                 type="button"
-                class="text-gray-500 hover:text-gray-800 disabled:opacity-50"
+                class="text-gray-500 hover:text-gray-800 disabled:opacity-50 dark:text-gray-400 dark:hover:text-gray-200"
                 :disabled="!output"
                 @click="download"
             >
@@ -71,7 +71,7 @@ const download = () => {
 
         <pre
             ref="logRef"
-            class="max-h-96 overflow-auto rounded-md bg-gray-900 p-4 text-xs leading-relaxed text-gray-100"
+            class="max-h-96 overflow-auto rounded-md bg-gray-900 p-4 text-xs leading-relaxed text-gray-100 dark:bg-black dark:ring-1 dark:ring-gray-700"
         >{{ output || 'No output yet.' }}</pre>
     </div>
 </template>

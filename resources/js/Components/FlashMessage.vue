@@ -45,7 +45,7 @@ onUnmounted(() => clearTimeout(timer));
             aria-live="polite"
         >
             <div
-                class="flex max-w-xl items-start gap-3 rounded-lg bg-gray-900 px-4 py-3 text-sm text-white shadow-lg"
+                class="flex max-w-xl items-start gap-3 rounded-lg bg-gray-900 px-4 py-3 text-sm text-white shadow-lg dark:bg-gray-700 dark:ring-1 dark:ring-white/10"
             >
                 <span class="break-words">{{ message }}</span>
                 <button

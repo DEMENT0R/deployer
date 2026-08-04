@@ -83,7 +83,7 @@ const toggleTester = (id) => {
 
     <AuthenticatedLayout>
         <template #header>
-            <h2 class="text-xl font-semibold leading-tight text-gray-800">
+            <h2 class="text-xl font-semibold leading-tight text-gray-800 dark:text-gray-200">
                 {{ isEdit ? 'Edit Instance' : 'Create Instance' }}
             </h2>
         </template>
@@ -91,7 +91,7 @@ const toggleTester = (id) => {
         <div class="py-12">
             <div class="mx-auto max-w-3xl sm:px-6 lg:px-8">
                 <form
-                    class="space-y-6 rounded-lg bg-white p-6 shadow-sm"
+                    class="space-y-6 rounded-lg bg-white p-6 shadow-sm dark:bg-gray-800"
                     @submit.prevent="submit"
                 >
                     <div>
@@ -115,7 +115,7 @@ const toggleTester = (id) => {
                             class="mt-1 block w-full"
                             placeholder="https://stage.example.com"
                         />
-                        <p class="mt-1 text-xs text-gray-500">
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
                             Where the deployed instance is reachable. Shown as a link and pinged for health.
                         </p>
                         <InputError class="mt-2" :message="form.errors.url" />
@@ -129,7 +129,7 @@ const toggleTester = (id) => {
                             class="mt-1 block w-full"
                             placeholder="git@github.com:org/repo.git"
                         />
-                        <p class="mt-1 text-xs text-gray-500">
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
                             Optional. Used by the "Clone repo" action to bootstrap the working copy at Path.
                         </p>
                         <InputError class="mt-2" :message="form.errors.repository_url" />
@@ -141,7 +141,7 @@ const toggleTester = (id) => {
                             <select
                                 id="platform"
                                 v-model="form.platform"
-                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
+                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-300"
                             >
                                 <option value="linux">Linux</option>
                                 <option value="windows">Windows</option>
@@ -170,7 +170,7 @@ const toggleTester = (id) => {
                     <div>
                         <InputLabel for="cache_command" value="Cache command" />
                         <TextInput id="cache_command" v-model="form.cache_command" class="mt-1 block w-full" />
-                        <p class="mt-1 text-xs text-gray-500">
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
                             Runs after composer and before migrations, and after every
                             <span class="font-mono">.env</span> edit made from the panel. Without it a
                             project with a cached config keeps the old database no matter what
@@ -226,7 +226,7 @@ const toggleTester = (id) => {
                             <InputError class="mt-2" :message="form.errors.serve_port" />
                         </div>
                     </div>
-                    <p class="-mt-4 text-xs text-gray-500">
+                    <p class="-mt-4 text-xs text-gray-500 dark:text-gray-400">
                         Name of the screen session running this instance's dev server, and the port it
                         listens on. Set both to start and stop the instance from
                         <span class="font-mono">Admin → Screens</span>; the session is also matched to
@@ -245,10 +245,11 @@ const toggleTester = (id) => {
                             <label
                                 v-for="tester in testers"
                                 :key="tester.id"
-                                class="flex items-center gap-2 text-sm text-gray-700"
+                                class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300"
                             >
                                 <input
                                     type="checkbox"
+                                    class="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-900 dark:focus:ring-indigo-600 dark:focus:ring-offset-gray-800"
                                     :checked="form.tester_ids.includes(tester.id)"
                                     @change="toggleTester(tester.id)"
                                 />
@@ -257,7 +258,7 @@ const toggleTester = (id) => {
                         </div>
                     </div>
 
-                    <div v-if="sourcePath && !isEdit" class="rounded-md bg-gray-50 p-4">
+                    <div v-if="sourcePath && !isEdit" class="rounded-md bg-gray-50 p-4 dark:bg-gray-900/50">
                         <div class="flex items-center gap-2">
                             <Checkbox
                                 id="copy_files"
@@ -266,14 +267,14 @@ const toggleTester = (id) => {
                             />
                             <InputLabel for="copy_files" value="Copy files from the original" />
                         </div>
-                        <p v-if="canCopyFiles" class="mt-1 text-xs text-gray-500">
+                        <p v-if="canCopyFiles" class="mt-1 text-xs text-gray-500 dark:text-gray-400">
                             Copies <span class="font-mono">{{ sourcePath }}</span> into Path, then reinstalls
                             dependencies and rebuilds the frontend. Path must be empty or not exist yet.
                             The <span class="font-mono">.env</span> is copied with
                             <span class="font-mono">DB_DATABASE</span> and
                             <span class="font-mono">APP_URL</span> left empty — fill them in before deploying.
                         </p>
-                        <p v-else class="mt-1 text-xs text-gray-500">
+                        <p v-else class="mt-1 text-xs text-gray-500 dark:text-gray-400">
                             Available for Linux instances only.
                         </p>
                         <InputError class="mt-2" :message="form.errors.copy_files" />

@@ -100,7 +100,7 @@ const stop = (session) => {
 
     <AuthenticatedLayout>
         <template #header>
-            <h2 class="text-xl font-semibold leading-tight text-gray-800">
+            <h2 class="text-xl font-semibold leading-tight text-gray-800 dark:text-gray-200">
                 Screen sessions
             </h2>
         </template>
@@ -109,7 +109,7 @@ const stop = (session) => {
             <div class="mx-auto max-w-7xl space-y-6 sm:px-6 lg:px-8">
                 <Deferred data="screen">
                     <template #fallback>
-                        <div class="rounded-lg bg-white p-6 text-sm text-gray-500 shadow-sm">
+                        <div class="rounded-lg bg-white p-6 text-sm text-gray-500 shadow-sm dark:bg-gray-800 dark:text-gray-400">
                             Listing screen sessions…
                         </div>
                     </template>
@@ -117,22 +117,22 @@ const stop = (session) => {
                     <div class="space-y-6">
                         <div
                             v-if="!screen.available"
-                            class="rounded-lg bg-white p-6 shadow-sm"
+                            class="rounded-lg bg-white p-6 shadow-sm dark:bg-gray-800"
                         >
-                            <div class="font-medium text-gray-900">Not available on this host</div>
-                            <p class="mt-1 text-sm text-gray-500">{{ screen.message }}</p>
+                            <div class="font-medium text-gray-900 dark:text-gray-100">Not available on this host</div>
+                            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ screen.message }}</p>
                         </div>
 
                         <template v-else>
                             <div
-                                class="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-white p-4 shadow-sm"
+                                class="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-white p-4 shadow-sm dark:bg-gray-800"
                             >
                                 <div class="flex items-center gap-2">
-                                    <label for="user" class="text-sm text-gray-600">User</label>
+                                    <label for="user" class="text-sm text-gray-600 dark:text-gray-400">User</label>
                                     <select
                                         id="user"
                                         :value="filter ?? ''"
-                                        class="rounded-md border-gray-300 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                        class="rounded-md border-gray-300 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-300"
                                         @change="filterByUser"
                                     >
                                         <option value="">All users</option>
@@ -146,7 +146,7 @@ const stop = (session) => {
                                     </select>
                                 </div>
 
-                                <p class="text-sm text-gray-500">
+                                <p class="text-sm text-gray-500 dark:text-gray-400">
                                     {{ screen.sessions.length }} session(s)
                                     <span v-if="!filter && screen.hidden_count">
                                         · {{ screen.hidden_count }} hidden
@@ -156,16 +156,16 @@ const stop = (session) => {
                                 </p>
                             </div>
 
-                            <div class="rounded-lg bg-white p-4 shadow-sm">
+                            <div class="rounded-lg bg-white p-4 shadow-sm dark:bg-gray-800">
                                 <div class="flex flex-wrap items-end gap-3">
                                     <div class="min-w-[16rem] flex-1">
-                                        <label for="instance_id" class="block text-sm text-gray-600">
+                                        <label for="instance_id" class="block text-sm text-gray-600 dark:text-gray-400">
                                             Start an instance
                                         </label>
                                         <select
                                             id="instance_id"
                                             v-model="startForm.instance_id"
-                                            class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                            class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-300"
                                             :disabled="!stoppedInstances.length"
                                         >
                                             <option value="">
@@ -188,11 +188,11 @@ const stop = (session) => {
                                     </PrimaryButton>
                                 </div>
 
-                                <p v-if="!instances.length" class="mt-2 text-xs text-gray-500">
+                                <p v-if="!instances.length" class="mt-2 text-xs text-gray-500 dark:text-gray-400">
                                     No instance has a screen session name and a serve port yet — set both in
                                     Admin → Instances to start it from here.
                                 </p>
-                                <p v-else-if="!stoppedInstances.length" class="mt-2 text-xs text-gray-500">
+                                <p v-else-if="!stoppedInstances.length" class="mt-2 text-xs text-gray-500 dark:text-gray-400">
                                     Every configured instance is already running.
                                 </p>
 
@@ -202,10 +202,10 @@ const stop = (session) => {
                                 <InputError class="mt-2" :message="stopForm.errors.session" />
                             </div>
 
-                            <div class="overflow-hidden rounded-lg bg-white shadow-sm">
+                            <div class="overflow-hidden rounded-lg bg-white shadow-sm dark:bg-gray-800">
                                 <div
                                     v-if="!screen.sessions.length"
-                                    class="p-4 text-sm text-gray-500"
+                                    class="p-4 text-sm text-gray-500 dark:text-gray-400"
                                 >
                                     No screen sessions found.
                                     <span v-if="!filter && screen.hidden_count">
@@ -213,46 +213,46 @@ const stop = (session) => {
                                         pick the user above to see them.
                                     </span>
                                 </div>
-                                <table v-else class="min-w-full divide-y divide-gray-200">
-                                    <thead class="bg-gray-50">
+                                <table v-else class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                                    <thead class="bg-gray-50 dark:bg-gray-900/50">
                                         <tr>
-                                            <th class="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">PID</th>
-                                            <th class="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">User</th>
-                                            <th class="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">Session</th>
-                                            <th class="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">Instance</th>
-                                            <th class="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">Started</th>
-                                            <th class="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">Uptime</th>
-                                            <th class="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">Command</th>
-                                            <th class="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500">Actions</th>
+                                            <th class="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">PID</th>
+                                            <th class="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">User</th>
+                                            <th class="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">Session</th>
+                                            <th class="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">Instance</th>
+                                            <th class="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">Started</th>
+                                            <th class="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">Uptime</th>
+                                            <th class="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500 dark:text-gray-400">Command</th>
+                                            <th class="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500 dark:text-gray-400">Actions</th>
                                         </tr>
                                     </thead>
-                                    <tbody class="divide-y divide-gray-200">
+                                    <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
                                         <tr v-for="session in screen.sessions" :key="session.pid">
-                                            <td class="px-4 py-2 font-mono text-sm text-gray-900">{{ session.pid }}</td>
-                                            <td class="px-4 py-2 text-sm text-gray-900">{{ session.user }}</td>
-                                            <td class="px-4 py-2 font-mono text-sm text-gray-900">
+                                            <td class="px-4 py-2 font-mono text-sm text-gray-900 dark:text-gray-100">{{ session.pid }}</td>
+                                            <td class="px-4 py-2 text-sm text-gray-900 dark:text-gray-100">{{ session.user }}</td>
+                                            <td class="px-4 py-2 font-mono text-sm text-gray-900 dark:text-gray-100">
                                                 {{ session.name ?? '—' }}
                                             </td>
                                             <td class="whitespace-nowrap px-4 py-2 text-sm">
                                                 <Link
                                                     v-if="instanceBySession[session.name]"
                                                     :href="route('instances.show', instanceBySession[session.name].id)"
-                                                    class="text-indigo-600 hover:text-indigo-900"
+                                                    class="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300"
                                                 >
                                                     {{ instanceBySession[session.name].name }}
-                                                    <span class="text-gray-400">
+                                                    <span class="text-gray-400 dark:text-gray-500">
                                                         :{{ instanceBySession[session.name].serve_port }}
                                                     </span>
                                                 </Link>
-                                                <span v-else class="text-gray-400">—</span>
+                                                <span v-else class="text-gray-400 dark:text-gray-500">—</span>
                                             </td>
-                                            <td class="whitespace-nowrap px-4 py-2 text-sm text-gray-500">
+                                            <td class="whitespace-nowrap px-4 py-2 text-sm text-gray-500 dark:text-gray-400">
                                                 {{ formatDate(session.started_at) }}
                                             </td>
-                                            <td class="whitespace-nowrap px-4 py-2 text-sm text-gray-500">
+                                            <td class="whitespace-nowrap px-4 py-2 text-sm text-gray-500 dark:text-gray-400">
                                                 {{ formatUptime(session.uptime_seconds) }}
                                             </td>
-                                            <td class="px-4 py-2 font-mono text-xs text-gray-500">
+                                            <td class="px-4 py-2 font-mono text-xs text-gray-500 dark:text-gray-400">
                                                 {{ session.command }}
                                             </td>
                                             <td class="whitespace-nowrap px-4 py-2 text-right">
@@ -263,7 +263,7 @@ const stop = (session) => {
                                                 >
                                                     Stop
                                                 </DangerButton>
-                                                <span v-else class="text-xs text-gray-400">
+                                                <span v-else class="text-xs text-gray-400 dark:text-gray-500">
                                                     unnamed
                                                 </span>
                                             </td>
@@ -272,7 +272,7 @@ const stop = (session) => {
                                 </table>
                             </div>
 
-                            <p class="text-xs text-gray-400">
+                            <p class="text-xs text-gray-400 dark:text-gray-500">
                                 Read from the process table, so sessions of every user on this host are
                                 listed — but whether a session is attached is not shown: that state lives
                                 in the screen socket, which only its owner can read. For the same reason
