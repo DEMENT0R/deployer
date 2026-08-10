@@ -67,6 +67,14 @@ class InstanceEnvUpdateTest extends TestCase
     {
         $instance = $this->instanceWithEnv("APP_ENV=testing\n");
 
+        // Первое сохранение синхронизирует SITE_TITLE_LABEL и заводит .env.backup — это
+        // ожидаемо для самого первого Save. Дальше проверяем именно то, что заявлено в
+        // названии теста: действительно неизменная отправка больше ничего не пишет.
+        $this->actingAs($this->admin())->put(route('admin.instances.env.update', $instance), [
+            'values' => ['APP_ENV' => 'testing'],
+        ]);
+        @unlink($this->base.'/.env.backup');
+
         $this->actingAs($this->admin())
             ->put(route('admin.instances.env.update', $instance), [
                 'values' => ['APP_ENV' => 'testing'],
@@ -121,13 +129,20 @@ class InstanceEnvUpdateTest extends TestCase
     {
         $instance = $this->instanceWithEnv("APP_ENV=testing\n");
 
+        // Первое сохранение синхронизирует SITE_TITLE_LABEL — берём итог как базу сравнения,
+        // тест проверяет именно то, что DB_DATABASE поверх неё не появляется.
+        $this->actingAs($this->admin())->put(route('admin.instances.env.update', $instance), [
+            'values' => ['APP_ENV' => 'testing'],
+        ]);
+        $baseline = $this->env();
+
         $this->actingAs($this->admin())
             ->put(route('admin.instances.env.update', $instance), [
                 'values' => ['DB_DATABASE' => ''],
             ])
             ->assertSessionHasNoErrors();
 
-        $this->assertSame("APP_ENV=testing\n", $this->env());
+        $this->assertSame($baseline, $this->env());
     }
 
     public function test_a_value_needing_quotes_round_trips(): void

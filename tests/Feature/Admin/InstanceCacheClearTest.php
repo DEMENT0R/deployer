@@ -136,15 +136,20 @@ class InstanceCacheClearTest extends TestCase
         return User::factory()->create(['role' => UserRole::Admin]);
     }
 
+    /**
+     * Имя и SITE_TITLE_LABEL заранее в паре — иначе первое же сохранение синхронизировало бы
+     * заголовок и попадало бы в $changed вместе с тем, что проверяет сам тест.
+     */
     private function instanceWithEnv(string $contents): Instance
     {
         $this->base = sys_get_temp_dir().'/deployer-cache-'.uniqid();
         mkdir($this->base, 0755, true);
-        file_put_contents($this->base.'/.env', $contents);
+        file_put_contents($this->base.'/.env', $contents.'SITE_TITLE_LABEL=SAMPLE-INSTANCE'."\n");
 
         config(['deployer.allowed_path_prefixes' => [$this->base]]);
 
         return Instance::factory()->create([
+            'name' => 'sample-instance',
             'path' => $this->base,
             'allowed_path_prefix' => $this->base,
             'cache_command' => 'php artisan config:clear',

@@ -261,6 +261,19 @@ class InstanceEnvService
             $changed[] = $key;
         }
 
+        // Заголовок стенда не приходит из формы — он всегда должен совпадать с названием
+        // инстанса из панели, поэтому синхронизируем его при каждом сохранении .env,
+        // а не только когда его прислали (его и не пришлют: ключа нет в env_visible_keys).
+        $title = Str::upper($instance->name);
+
+        if (($current['SITE_TITLE_LABEL'] ?? null) !== $title) {
+            $contents = array_key_exists('SITE_TITLE_LABEL', $current)
+                ? $this->replaceKey($contents, 'SITE_TITLE_LABEL', $title)
+                : $this->appendKey($contents, 'SITE_TITLE_LABEL', $title);
+
+            $changed[] = 'SITE_TITLE_LABEL';
+        }
+
         if ($changed === []) {
             return [];
         }
