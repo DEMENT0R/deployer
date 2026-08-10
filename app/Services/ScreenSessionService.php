@@ -106,6 +106,27 @@ class ScreenSessionService
         }
     }
 
+    /**
+     * Перезапуск сессии стенда после правки `.env` из Admin → Instances: `artisan serve` держит
+     * переменные окружения в памяти процесса и перечитает файл, только заново стартовав.
+     * Выключенную сессию так не поднимаем — правка `.env` не повод включать погашенный стенд.
+     *
+     * @return bool Была ли сессия действительно перезапущена.
+     *
+     * @throws ScreenException
+     */
+    public function restart(Instance $instance): bool
+    {
+        if (! $instance->isServable() || ! $this->monitor->exists($instance->screen_session)) {
+            return false;
+        }
+
+        $this->stop($instance->screen_session);
+        $this->start($instance);
+
+        return true;
+    }
+
     /** Отдельным методом ради тестов: на Windows-машине разработчика screen'а нет. */
     protected function supported(): bool
     {

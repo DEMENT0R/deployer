@@ -8,6 +8,7 @@ use App\Enums\UserRole;
 use App\Exceptions\CacheClearException;
 use App\Exceptions\EnvWriteException;
 use App\Exceptions\PathValidationException;
+use App\Exceptions\ScreenException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreInstanceEnvRequest;
 use App\Http\Requests\Admin\StoreInstanceRequest;
@@ -19,6 +20,7 @@ use App\Models\Instance;
 use App\Models\User;
 use App\Services\InstanceCacheService;
 use App\Services\InstanceEnvService;
+use App\Services\ScreenSessionService;
 use Illuminate\Http\RedirectResponse;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -82,6 +84,7 @@ class InstanceController extends Controller
         Instance $instance,
         InstanceEnvService $envService,
         InstanceCacheService $cacheService,
+        ScreenSessionService $sessions,
     ): RedirectResponse {
         try {
             $changed = $envService->update($instance, $request->validated()['values']);
@@ -94,25 +97,35 @@ class InstanceController extends Controller
         }
 
         $message = 'Updated: '.implode(', ', $changed).'.';
-
-        // Пустая команда — это «чистку не делаем», а не ошибка: ровно так же её пропускает
-        // одноимённый шаг деплоя.
-        if (blank($instance->cache_command)) {
-            return back()->with('success', $message);
-        }
+        $errors = [];
 
         // Целевой проект с закэшированным конфигом новую БД не увидит: правка выглядела бы
-        // применённой, а стенд продолжал бы ходить в старую базу. Чистим сразу.
-        try {
-            $cacheService->clear($instance);
-        } catch (CacheClearException|PathValidationException $exception) {
-            // .env уже переписан — сорвавшаяся чистка не должна выглядеть как несохранённая правка.
-            return back()
-                ->with('success', $message)
-                ->withErrors(['cache' => 'Saved, but clearing caches failed: '.$exception->getMessage()]);
+        // применённой, а стенд продолжал бы ходить в старую базу. Чистим сразу. Пустая команда —
+        // это «чистку не делаем», а не ошибка: ровно так же её пропускает одноимённый шаг деплоя.
+        if (filled($instance->cache_command)) {
+            try {
+                $cacheService->clear($instance);
+                $message .= ' Caches cleared.';
+            } catch (CacheClearException|PathValidationException $exception) {
+                $errors['cache'] = 'Clearing caches failed: '.$exception->getMessage();
+            }
         }
 
-        return back()->with('success', $message.' Caches cleared.');
+        // Запущенный `artisan serve` держит переменные окружения в памяти процесса — перечитает
+        // .env, только заново стартовав.
+        try {
+            if ($sessions->restart($instance)) {
+                $message .= " Session \"{$instance->screen_session}\" restarted.";
+            }
+        } catch (ScreenException $exception) {
+            $errors['screen'] = 'Restarting the serve session failed: '.$exception->getMessage();
+        }
+
+        // .env уже переписан: сорвавшаяся чистка или перезапуск не должны выглядеть как
+        // несохранённая правка — ошибки идут рядом с успехом, а не вместо него.
+        return $errors === []
+            ? back()->with('success', $message)
+            : back()->with('success', $message)->withErrors($errors);
     }
 
     /** Та же чистка кнопкой: `.env` могли поправить руками на хосте, мимо панели. */

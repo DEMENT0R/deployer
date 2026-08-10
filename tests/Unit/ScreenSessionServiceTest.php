@@ -108,6 +108,47 @@ class ScreenSessionServiceTest extends TestCase
         $this->service($runner, runningAfterStart: false)->stop('someone-elses');
     }
 
+    public function test_restart_stops_and_starts_a_running_session(): void
+    {
+        $runner = $this->runner();
+
+        // true: сессия сейчас работает, есть что перезапускать.
+        // false: сразу после stop() проверка «уже запущена?» внутри start() — уже нет.
+        // true: проверка «не умерла ли после запуска» внутри start() — жива.
+        $service = $this->serviceWithExistsSequence($runner, [true, false, true]);
+
+        $restarted = $service->restart($this->makeInstance());
+
+        $this->assertTrue($restarted);
+        $this->assertSame(['screen', '-S', 'instance-1', '-X', 'quit'], $runner->commands[0]);
+        $this->assertSame([
+            'screen', '-dmS', 'instance-1',
+            'bash', '-lc', 'php artisan serve --host=0.0.0.0 --port=8080',
+        ], $runner->commands[1]);
+    }
+
+    public function test_restart_does_nothing_for_a_session_that_is_not_running(): void
+    {
+        $runner = $this->runner();
+
+        $restarted = $this->serviceWithExistsSequence($runner, [false])
+            ->restart($this->makeInstance());
+
+        $this->assertFalse($restarted);
+        $this->assertSame([], $runner->commands);
+    }
+
+    public function test_restart_does_nothing_for_an_instance_without_a_session_name_or_port(): void
+    {
+        $runner = $this->runner();
+
+        $restarted = $this->serviceWithExistsSequence($runner, [true])
+            ->restart($this->makeInstance(session: null, port: null));
+
+        $this->assertFalse($restarted);
+        $this->assertSame([], $runner->commands);
+    }
+
     private function makeInstance(
         ?string $session = 'instance-1',
         ?int $port = 8080,
@@ -171,6 +212,32 @@ class ScreenSessionServiceTest extends TestCase
             public function exists(string $name): bool
             {
                 return $this->calls++ === 0 ? $this->before : $this->after;
+            }
+        };
+
+        return new class($runner, new PathValidator, $monitor) extends ScreenSessionService
+        {
+            protected function supported(): bool
+            {
+                return true;
+            }
+        };
+    }
+
+    /** @param  list<bool>  $sequence Ответы exists() по порядку вызовов, один за другим. */
+    private function serviceWithExistsSequence(ProcessRunner $runner, array $sequence): ScreenSessionService
+    {
+        $monitor = new class($runner, $sequence) extends ScreenMonitorService
+        {
+            /** @param  list<bool>  $sequence */
+            public function __construct(ProcessRunner $runner, private array $sequence)
+            {
+                parent::__construct($runner);
+            }
+
+            public function exists(string $name): bool
+            {
+                return array_shift($this->sequence) ?? false;
             }
         };
 
