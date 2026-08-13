@@ -170,16 +170,19 @@ php artisan queue:work --timeout=900
 | Действие | Шаги | Нужна ветка |
 |----------|------|-------------|
 | Full deploy | git → composer → cache → migrate → frontend | да |
-| Deploy branch | git | да |
-| Composer | composer | нет |
+| Code only | git | да |
+| Composer install | composer | нет |
 | Clear caches | cache | нет |
-| Migrate | migrate | нет |
+| Run migrations | migrate | нет |
 | Build frontend | frontend | нет |
 | Clone repo | clone | нет |
 | Copy files | copy → composer → cache → frontend | нет |
 | Rollback | rollback → composer → cache → frontend | нет |
 
-Кнопки `Composer` и `Clear caches` на странице инстанса появляются, только когда у инстанса задана
+На странице инстанса кнопки разбиты на группы: `Deploy` (полный деплой и обновление кода),
+`Individual steps` (отдельные шаги) и `Recovery` (откат).
+
+Кнопки `Composer install` и `Clear caches` на странице инстанса появляются, только когда у инстанса задана
 соответствующая команда; запрос с пустой командой отклоняется. Внутри полного деплоя пустая команда
 по-прежнему просто пропускает шаг — там это штатное «нечего делать», а не отказ по нажатой кнопке.
 

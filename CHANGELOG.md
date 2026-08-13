@@ -3,6 +3,16 @@
 Формат — [Keep a Changelog](https://keepachangelog.com/ru/1.1.0/).
 Версий и тегов у проекта пока нет, поэтому разделы датированы по коммитам.
 
+## 2026-08-13
+
+### Изменено
+
+- **Кнопки на странице инстанса сгруппированы по смыслу.** Вместо одного ряда из семи кнопок —
+  три группы с подписями: `Deploy` (`Full deploy`, `Code only`), `Individual steps`
+  (`Composer install`, `Clear caches`, `Run migrations`, `Build frontend`) и `Recovery` (`Rollback`).
+  Заодно переименованы: `Deploy branch` → `Code only` (оно и раньше делало только git-шаг),
+  `Composer` → `Composer install`, `Migrate` → `Run migrations`. Набор действий и адреса не менялись.
+
 ## 2026-08-10
 
 ### Добавлено

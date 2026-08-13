@@ -403,52 +403,74 @@ onUnmounted(() => {
                         </div>
                     </div>
 
-                    <div class="flex flex-wrap gap-2">
-                        <PrimaryButton
-                            :disabled="isRunning || !selectedBranch"
-                            @click="deploy('full')"
-                        >
-                            Full deploy
-                        </PrimaryButton>
-                        <SecondaryButton
-                            :disabled="isRunning || !selectedBranch"
-                            @click="deploy('branch')"
-                        >
-                            Deploy branch
-                        </SecondaryButton>
-                        <SecondaryButton
-                            v-if="instance.has_composer_command"
-                            :disabled="isRunning"
-                            @click="deploy('composer')"
-                        >
-                            Composer
-                        </SecondaryButton>
-                        <SecondaryButton
-                            v-if="instance.has_cache_command"
-                            :disabled="isRunning"
-                            @click="deploy('cache')"
-                        >
-                            Clear caches
-                        </SecondaryButton>
-                        <SecondaryButton
-                            :disabled="isRunning"
-                            @click="deploy('migrate')"
-                        >
-                            Migrate
-                        </SecondaryButton>
-                        <SecondaryButton
-                            :disabled="isRunning"
-                            @click="deploy('frontend')"
-                        >
-                            Build frontend
-                        </SecondaryButton>
-                        <DangerButton
-                            v-if="canRollback"
-                            :disabled="isRunning"
-                            @click="rollback"
-                        >
-                            Rollback
-                        </DangerButton>
+                    <div class="space-y-4">
+                        <div>
+                            <p class="mb-2 text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                                Deploy
+                            </p>
+                            <div class="flex flex-wrap gap-2">
+                                <PrimaryButton
+                                    :disabled="isRunning || !selectedBranch"
+                                    @click="deploy('full')"
+                                >
+                                    Full deploy
+                                </PrimaryButton>
+                                <SecondaryButton
+                                    :disabled="isRunning || !selectedBranch"
+                                    @click="deploy('branch')"
+                                >
+                                    Code only
+                                </SecondaryButton>
+                            </div>
+                        </div>
+
+                        <div>
+                            <p class="mb-2 text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                                Individual steps
+                            </p>
+                            <div class="flex flex-wrap gap-2">
+                                <SecondaryButton
+                                    v-if="instance.has_composer_command"
+                                    :disabled="isRunning"
+                                    @click="deploy('composer')"
+                                >
+                                    Composer install
+                                </SecondaryButton>
+                                <SecondaryButton
+                                    v-if="instance.has_cache_command"
+                                    :disabled="isRunning"
+                                    @click="deploy('cache')"
+                                >
+                                    Clear caches
+                                </SecondaryButton>
+                                <SecondaryButton
+                                    :disabled="isRunning"
+                                    @click="deploy('migrate')"
+                                >
+                                    Run migrations
+                                </SecondaryButton>
+                                <SecondaryButton
+                                    :disabled="isRunning"
+                                    @click="deploy('frontend')"
+                                >
+                                    Build frontend
+                                </SecondaryButton>
+                            </div>
+                        </div>
+
+                        <div v-if="canRollback">
+                            <p class="mb-2 text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                                Recovery
+                            </p>
+                            <div class="flex flex-wrap gap-2">
+                                <DangerButton
+                                    :disabled="isRunning"
+                                    @click="rollback"
+                                >
+                                    Rollback
+                                </DangerButton>
+                            </div>
+                        </div>
                     </div>
 
                     <InputError class="mt-2" :message="form.errors.branch" />
