@@ -115,6 +115,7 @@ class InstanceController extends Controller
             'name' => $instance->name,
             'path' => $instance->path,
             'url' => $instance->url,
+            'tunnel_url' => $instance->tunnelUrl(),
             'default_branch' => $instance->default_branch,
             'latest_deployment' => $latest ? $this->formatDeployment($latest) : null,
         ];
@@ -130,6 +131,7 @@ class InstanceController extends Controller
             'name' => $instance->name,
             'path' => $instance->path,
             'url' => $instance->url,
+            'tunnel_url' => $instance->tunnelUrl(),
             'default_branch' => $instance->default_branch,
             'git_remote' => $instance->git_remote,
             // Сами команды наружу не отдаём — странице хватает знания, есть ли что запускать.

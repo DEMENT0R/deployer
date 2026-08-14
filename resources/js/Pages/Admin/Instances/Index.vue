@@ -81,11 +81,26 @@ const cloneRepo = (instance) => {
                                         :href="instance.url"
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        class="text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300"
+                                        class="block text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300"
                                     >
                                         {{ instance.url }}
                                     </a>
-                                    <span v-else class="text-gray-400 dark:text-gray-500">—</span>
+                                    <span
+                                        v-else-if="!instance.tunnel_url"
+                                        class="text-gray-400 dark:text-gray-500"
+                                    >
+                                        —
+                                    </span>
+                                    <a
+                                        v-if="instance.tunnel_url"
+                                        :href="instance.tunnel_url"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        class="block text-xs text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300"
+                                    >
+                                        {{ instance.tunnel_url }}
+                                        <span class="text-gray-400 dark:text-gray-500">(tunnel)</span>
+                                    </a>
                                 </td>
                                 <td class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">{{ instance.users_count }}</td>
                                 <td class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">{{ instance.is_active ? 'Yes' : 'No' }}</td>

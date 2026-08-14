@@ -40,6 +40,7 @@ class InstanceController extends Controller
                 'name' => $instance->name,
                 'path' => $instance->path,
                 'url' => $instance->url,
+                'tunnel_url' => $instance->tunnelUrl(),
                 'repository_url' => $instance->repository_url,
                 'is_active' => $instance->is_active,
                 'users_count' => $instance->users_count,

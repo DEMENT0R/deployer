@@ -74,15 +74,26 @@ onMounted(() => {
                                 <span v-else>{{ databases[instance.id] ?? 'unknown' }}</span>
                             </p>
                         </div>
-                        <a
-                            v-if="instance.url"
-                            :href="instance.url"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            class="mt-3 inline-block truncate text-xs font-medium text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300"
-                        >
-                            {{ instance.url }} ↗
-                        </a>
+                        <div class="mt-3 space-y-1">
+                            <a
+                                v-if="instance.url"
+                                :href="instance.url"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                class="block truncate text-xs font-medium text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300"
+                            >
+                                {{ instance.url }} ↗
+                            </a>
+                            <a
+                                v-if="instance.tunnel_url"
+                                :href="instance.tunnel_url"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                class="block truncate text-xs font-medium text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300"
+                            >
+                                {{ instance.tunnel_url }} ↗ <span class="text-gray-400 dark:text-gray-500">(tunnel)</span>
+                            </a>
+                        </div>
                     </div>
                 </div>
             </div>

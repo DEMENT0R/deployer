@@ -47,6 +47,18 @@ class Instance extends Model
         return filled($this->screen_session) && filled($this->serve_port);
     }
 
+    /** Адрес стенда через проброшенный к нему порт; null — если порт не задан. */
+    public function tunnelUrl(): ?string
+    {
+        $template = config('deployer.tunnel_url_template');
+
+        if (blank($template) || blank($this->serve_port)) {
+            return null;
+        }
+
+        return str_replace('{port}', (string) $this->serve_port, $template);
+    }
+
     public function users(): BelongsToMany
     {
         return $this->belongsToMany(User::class)->withTimestamps();

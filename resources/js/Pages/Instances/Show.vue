@@ -330,22 +330,34 @@ onUnmounted(() => {
                     </h2>
                     <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ instance.path }}</p>
                 </div>
-                <div v-if="instance.url" class="flex items-center gap-3">
-                    <HealthBadge :health="health" :checking="healthChecking" />
-                    <SecondaryButton
-                        type="button"
-                        :disabled="healthChecking"
-                        @click="checkHealth"
-                    >
-                        {{ healthChecking ? '…' : '↻' }}
-                    </SecondaryButton>
+                <div v-if="instance.url || instance.tunnel_url" class="flex items-center gap-3">
+                    <template v-if="instance.url">
+                        <HealthBadge :health="health" :checking="healthChecking" />
+                        <SecondaryButton
+                            type="button"
+                            :disabled="healthChecking"
+                            @click="checkHealth"
+                        >
+                            {{ healthChecking ? '…' : '↻' }}
+                        </SecondaryButton>
+                        <a
+                            :href="instance.url"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            class="text-sm font-medium text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300"
+                        >
+                            Open ↗
+                        </a>
+                    </template>
                     <a
-                        :href="instance.url"
+                        v-if="instance.tunnel_url"
+                        :href="instance.tunnel_url"
+                        :title="`Open through a tunnel: ${instance.tunnel_url}`"
                         target="_blank"
                         rel="noopener noreferrer"
                         class="text-sm font-medium text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300"
                     >
-                        Open ↗
+                        Tunnel ↗
                     </a>
                 </div>
             </div>
