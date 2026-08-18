@@ -51,13 +51,15 @@ const showingNavigationDropdown = ref(false);
                                 <NavLink
                                     :href="route('changelog.index')"
                                     :active="route().current('changelog.*')"
-                                    class="relative"
                                 >
-                                    Changelog
-                                    <span
-                                        v-if="$page.props.hasUnseenChangelog"
-                                        class="absolute -end-2 -top-0.5 h-2 w-2 rounded-full bg-red-600"
-                                    ></span>
+                                    <!-- Точку вешаем на текст: сама ссылка растянута на высоту бара -->
+                                    <span class="relative">
+                                        Changelog
+                                        <span
+                                            v-if="$page.props.hasUnseenChangelog"
+                                            class="absolute -end-2 top-0 h-1.5 w-1.5 rounded-full bg-red-600"
+                                        ></span>
+                                    </span>
                                 </NavLink>
 
                                 <!-- Админские экраны собраны в один пункт, чтобы не растить бар -->
