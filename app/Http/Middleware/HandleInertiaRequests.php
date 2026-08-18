@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Support\Changelog;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -36,6 +37,12 @@ class HandleInertiaRequests extends Middleware
             'appName' => config('app.name'),
             // Замыкание, а не значение: поллинг деплоя ходит с `only` и счётчик не считает.
             'unreadNotifications' => fn () => $user?->unreadNotifications()->count() ?? 0,
+            'hasUnseenChangelog' => function () use ($user) {
+                $latest = Changelog::latestDate();
+
+                return $user && $latest !== null
+                    && (! $user->changelog_seen_at || $user->changelog_seen_at->lt($latest));
+            },
             // По той же причине замыканием: незапрошенный флеш не должен вычитываться из сессии
             // на частичной перезагрузке — иначе сообщение сгорит, не доехав до экрана.
             'flash' => [

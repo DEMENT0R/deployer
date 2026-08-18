@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\QueueController as AdminQueueController;
 use App\Http\Controllers\Admin\ScreenController as AdminScreenController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\BranchController;
+use App\Http\Controllers\ChangelogController;
 use App\Http\Controllers\DeployController;
 use App\Http\Controllers\DeploymentController;
 use App\Http\Controllers\InstanceController;
@@ -22,6 +23,7 @@ Route::get('/', function () {
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/activity', [ActivityController::class, 'index'])->name('activity.index');
+    Route::get('/changelog', [ChangelogController::class, 'index'])->name('changelog.index');
 
     Route::get('/notifications', [NotificationController::class, 'index'])
         ->middleware('throttle:60,1')

@@ -48,6 +48,17 @@ const showingNavigationDropdown = ref(false);
                                 >
                                     Activity
                                 </NavLink>
+                                <NavLink
+                                    :href="route('changelog.index')"
+                                    :active="route().current('changelog.*')"
+                                    class="relative"
+                                >
+                                    Changelog
+                                    <span
+                                        v-if="$page.props.hasUnseenChangelog"
+                                        class="absolute -end-2 -top-0.5 h-2 w-2 rounded-full bg-red-600"
+                                    ></span>
+                                </NavLink>
 
                                 <!-- Админские экраны собраны в один пункт, чтобы не растить бар -->
                                 <Dropdown
@@ -212,6 +223,18 @@ const showingNavigationDropdown = ref(false);
                             :active="route().current('activity.*')"
                         >
                             Activity
+                        </ResponsiveNavLink>
+                        <ResponsiveNavLink
+                            :href="route('changelog.index')"
+                            :active="route().current('changelog.*')"
+                        >
+                            <span class="inline-flex items-center gap-2">
+                                Changelog
+                                <span
+                                    v-if="$page.props.hasUnseenChangelog"
+                                    class="h-2 w-2 rounded-full bg-red-600"
+                                ></span>
+                            </span>
                         </ResponsiveNavLink>
                         <template v-if="$page.props.auth.user?.is_admin">
                             <div class="mt-2 border-t border-gray-200 pt-2 dark:border-gray-600">
