@@ -137,6 +137,7 @@ class InstanceController extends Controller
             // Сами команды наружу не отдаём — странице хватает знания, есть ли что запускать.
             'has_composer_command' => filled($instance->composer_command),
             'has_cache_command' => filled($instance->cache_command),
+            'has_backup_command' => filled($instance->backup_command),
         ];
     }
 }

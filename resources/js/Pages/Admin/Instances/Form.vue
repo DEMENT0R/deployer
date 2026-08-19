@@ -39,6 +39,7 @@ const form = useForm({
     cache_command:
         source?.cache_command ??
         'php artisan config:clear && php artisan view:clear && php artisan route:clear',
+    backup_command: source?.backup_command ?? '',
     migrate_command: source?.migrate_command ?? 'php artisan migrate --force',
     frontend_command: source?.frontend_command ?? 'npm ci && npm run build',
     allowed_path_prefix: source?.allowed_path_prefix ?? '',
@@ -181,6 +182,22 @@ const toggleTester = (id) => {
                             <span class="font-mono">database</span> driver.
                         </p>
                         <InputError class="mt-2" :message="form.errors.cache_command" />
+                    </div>
+
+                    <div>
+                        <InputLabel for="backup_command" value="Backup command" />
+                        <TextInput id="backup_command" v-model="form.backup_command" class="mt-1 block w-full" />
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                            Dumps the project database. Runs as the first step of a full deploy —
+                            before git and migrations — and on the <span class="font-mono">Backup database</span>
+                            button. Leave empty to skip the step; the button disappears with it.
+                            Redirect the dump into a file, otherwise it ends up in the deploy log:
+                            <span class="font-mono">mysqldump --defaults-extra-file=.my.cnf db | gzip &gt; storage/backups/db-$(date +%F-%H%M).sql.gz</span>.
+                            Keep the password out of the command itself — inline it is readable in the
+                            host process list; put it in a credentials file instead. Dumps written under
+                            <span class="font-mono">public/</span> are served by the stand to anyone.
+                        </p>
+                        <InputError class="mt-2" :message="form.errors.backup_command" />
                     </div>
 
                     <div>

@@ -52,7 +52,7 @@ class CacheActionTest extends TestCase
     public function test_caches_are_cleared_after_composer_and_before_migrations(): void
     {
         $this->assertSame(
-            ['git', 'composer', 'cache', 'migrate', 'frontend'],
+            ['backup', 'git', 'composer', 'cache', 'migrate', 'frontend'],
             array_map(fn ($step) => $step->value, DeployAction::Full->steps()),
         );
     }

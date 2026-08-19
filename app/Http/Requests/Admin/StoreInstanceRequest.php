@@ -88,6 +88,7 @@ class StoreInstanceRequest extends FormRequest
             'default_branch' => ['required', 'string', 'max:255', 'regex:'.config('deployer.branch_pattern')],
             'composer_command' => ['nullable', 'string', 'max:1024'],
             'cache_command' => ['nullable', 'string', 'max:1024'],
+            'backup_command' => ['nullable', 'string', 'max:1024'],
             'migrate_command' => ['required', 'string', 'max:1024'],
             'frontend_command' => ['required', 'string', 'max:1024'],
             'allowed_path_prefix' => ['nullable', 'string', 'max:1024'],

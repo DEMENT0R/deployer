@@ -442,6 +442,13 @@ onUnmounted(() => {
                             </p>
                             <div class="flex flex-wrap gap-2">
                                 <SecondaryButton
+                                    v-if="instance.has_backup_command"
+                                    :disabled="isRunning"
+                                    @click="deploy('backup')"
+                                >
+                                    Backup database
+                                </SecondaryButton>
+                                <SecondaryButton
                                     v-if="instance.has_composer_command"
                                     :disabled="isRunning"
                                     @click="deploy('composer')"

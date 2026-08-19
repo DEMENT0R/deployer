@@ -6,6 +6,7 @@ enum DeployAction: string
 {
     case Full = 'full';
     case Branch = 'branch';
+    case Backup = 'backup';
     case Composer = 'composer';
     case Cache = 'cache';
     case Migrate = 'migrate';
@@ -18,7 +19,7 @@ enum DeployAction: string
     {
         return match ($this) {
             self::Full, self::Branch => true,
-            self::Composer, self::Cache, self::Migrate, self::Frontend, self::Clone, self::Copy, self::Rollback => false,
+            self::Backup, self::Composer, self::Cache, self::Migrate, self::Frontend, self::Clone, self::Copy, self::Rollback => false,
         };
     }
 
@@ -33,6 +34,7 @@ enum DeployAction: string
         return [
             self::Full->value,
             self::Branch->value,
+            self::Backup->value,
             self::Composer->value,
             self::Cache->value,
             self::Migrate->value,
@@ -46,10 +48,13 @@ enum DeployAction: string
     public function steps(): array
     {
         return match ($this) {
+            // Дамп БД — первым шагом, до git: смысл его в том, что это состояние «как было
+            // до деплоя», и снимать его надо, пока рабочее дерево ещё не тронуто.
             // Чистка кэшей — после composer (без vendor artisan не стартует) и строго до миграций:
             // с закэшированным конфигом migrate уедет в ту БД, что лежит в bootstrap/cache, а не в .env.
-            self::Full => [DeployStep::Git, DeployStep::Composer, DeployStep::Cache, DeployStep::Migrate, DeployStep::Frontend],
+            self::Full => [DeployStep::Backup, DeployStep::Git, DeployStep::Composer, DeployStep::Cache, DeployStep::Migrate, DeployStep::Frontend],
             self::Branch => [DeployStep::Git],
+            self::Backup => [DeployStep::Backup],
             self::Composer => [DeployStep::Composer],
             self::Cache => [DeployStep::Cache],
             self::Migrate => [DeployStep::Migrate],

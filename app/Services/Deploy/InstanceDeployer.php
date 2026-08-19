@@ -20,7 +20,7 @@ class InstanceDeployer
      *
      * @var list<DeployStep>
      */
-    private const OPTIONAL_STEPS = [DeployStep::Composer, DeployStep::Cache];
+    private const OPTIONAL_STEPS = [DeployStep::Backup, DeployStep::Composer, DeployStep::Cache];
 
     public function __construct(
         private readonly PathValidator $pathValidator,
@@ -66,6 +66,7 @@ class InstanceDeployer
                         DeployStep::Clone => $this->runClone($instance, $cwd, $onOutput),
                         DeployStep::Copy => $this->runCopy($deployment, $instance, $cwd, $onOutput),
                         DeployStep::Rollback => $this->runRollback($deployment, $cwd, $onOutput),
+                        DeployStep::Backup => $this->runBackup($instance, $cwd, $onOutput),
                         DeployStep::Git => $this->runGit($instance, $deployment, $cwd, $onOutput),
                         DeployStep::Composer => $this->runComposer($instance, $cwd, $onOutput),
                         DeployStep::Cache => $this->runCache($instance, $cwd, $onOutput),
@@ -191,6 +192,21 @@ class InstanceDeployer
         $deployment->update(['commit_after' => $this->gitService->headCommit($cwd)['sha'] ?? null]);
     }
 
+    /**
+     * Дамп БД целевого проекта. Саму команду в лог не пишем — в ней может стоять пароль от базы,
+     * а лог деплоя видит любой тестировщик инстанса.
+     */
+    private function runBackup(Instance $instance, string $cwd, Closure $onOutput): void
+    {
+        $command = $instance->backup_command;
+
+        if (blank($command)) {
+            return;
+        }
+
+        $this->processRunner->runShellOrFail($command, $cwd, $onOutput);
+    }
+
     private function runComposer(Instance $instance, string $cwd, Closure $onOutput): void
     {
         $command = $instance->composer_command;
@@ -227,6 +243,7 @@ class InstanceDeployer
     private function stepCommand(Instance $instance, DeployStep $step): ?string
     {
         return match ($step) {
+            DeployStep::Backup => $instance->backup_command,
             DeployStep::Composer => $instance->composer_command,
             DeployStep::Cache => $instance->cache_command,
             DeployStep::Migrate => $instance->migrate_command,

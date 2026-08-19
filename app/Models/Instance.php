@@ -24,6 +24,7 @@ class Instance extends Model
         'default_branch',
         'composer_command',
         'cache_command',
+        'backup_command',
         'migrate_command',
         'frontend_command',
         'allowed_path_prefix',
