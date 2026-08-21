@@ -21,6 +21,7 @@ use App\Models\User;
 use App\Services\InstanceCacheService;
 use App\Services\InstanceEnvService;
 use App\Services\ScreenSessionService;
+use App\Support\BackupCommand;
 use Illuminate\Http\RedirectResponse;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -146,6 +147,7 @@ class InstanceController extends Controller
         return Inertia::render('Admin/Instances/Form', [
             'instance' => null,
             'testers' => $this->testersList(),
+            'default_backup_command' => BackupCommand::suggested(),
         ]);
     }
 

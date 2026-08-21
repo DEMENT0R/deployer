@@ -113,4 +113,41 @@ class BackupActionTest extends TestCase
             ->get(route('instances.show', $instance))
             ->assertInertia(fn ($page) => $page->missing('instance.backup_command'));
     }
+
+    /** Новому инстансу панель предлагает собственный скрипт бэкапа, а не пустое поле. */
+    public function test_the_create_page_suggests_the_bundled_backup_script(): void
+    {
+        config(['deployer.backup_root' => '/var/backups/deployer', 'deployer.backup_keep' => 7]);
+
+        $admin = User::factory()->create(['role' => UserRole::Admin]);
+
+        $response = $this->actingAs($admin)->get(route('admin.instances.create'));
+        $command = $response->viewData('page')['props']['default_backup_command'];
+
+        $this->assertStringContainsString('scripts/backup-db.sh', $command);
+        $this->assertStringContainsString('--root=/var/backups/deployer', $command);
+        $this->assertStringContainsString('--keep=7', $command);
+    }
+
+    public function test_an_empty_backup_root_leaves_the_suggestion_out(): void
+    {
+        config(['deployer.backup_root' => '']);
+
+        $admin = User::factory()->create(['role' => UserRole::Admin]);
+
+        $this->actingAs($admin)
+            ->get(route('admin.instances.create'))
+            ->assertInertia(fn ($page) => $page->where('default_backup_command', ''));
+    }
+
+    /** У существующего инстанса пустая команда — осознанный отказ от шага, а не «не заполнено». */
+    public function test_the_edit_page_does_not_suggest_a_backup_command(): void
+    {
+        $admin = User::factory()->create(['role' => UserRole::Admin]);
+        $instance = Instance::factory()->create(['backup_command' => null]);
+
+        $this->actingAs($admin)
+            ->get(route('admin.instances.edit', $instance))
+            ->assertInertia(fn ($page) => $page->missing('default_backup_command'));
+    }
 }

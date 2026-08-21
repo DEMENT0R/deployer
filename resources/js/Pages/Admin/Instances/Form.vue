@@ -22,6 +22,11 @@ const props = defineProps({
         type: Array,
         default: () => [],
     },
+    // Команда бэкапа, которую панель предлагает новому инстансу; строит её BackupCommand.
+    default_backup_command: {
+        type: String,
+        default: '',
+    },
 });
 
 const isEdit = !!props.instance;
@@ -39,7 +44,9 @@ const form = useForm({
     cache_command:
         source?.cache_command ??
         'php artisan config:clear && php artisan view:clear && php artisan route:clear',
-    backup_command: source?.backup_command ?? '',
+    // У существующего инстанса и у копии пустая команда — осознанное «шаг не нужен»,
+    // поэтому подсказку подставляем только новому.
+    backup_command: source ? (source.backup_command ?? '') : props.default_backup_command,
     migrate_command: source?.migrate_command ?? 'php artisan migrate --force',
     frontend_command: source?.frontend_command ?? 'npm ci && npm run build',
     allowed_path_prefix: source?.allowed_path_prefix ?? '',
@@ -191,11 +198,14 @@ const toggleTester = (id) => {
                             Dumps the project database. Runs as the first step of a full deploy —
                             before git and migrations — and on the <span class="font-mono">Backup database</span>
                             button. Leave empty to skip the step; the button disappears with it.
-                            Redirect the dump into a file, otherwise it ends up in the deploy log:
-                            <span class="font-mono">mysqldump --defaults-extra-file=.my.cnf db | gzip &gt; storage/backups/db-$(date +%F-%H%M).sql.gz</span>.
-                            Keep the password out of the command itself — inline it is readable in the
-                            host process list; put it in a credentials file instead. Dumps written under
-                            <span class="font-mono">public/</span> are served by the stand to anyone.
+                            The suggested command runs the panel's own
+                            <span class="font-mono">scripts/backup-db.sh</span>: it reads the credentials
+                            from the project's <span class="font-mono">.env</span>, writes a gzipped dump
+                            outside the project directory and keeps the last few. A command of your own
+                            has to redirect the dump into a file, otherwise it ends up in the deploy log,
+                            and has to keep the password out of the arguments — those are readable in the
+                            host process list. Dumps written under <span class="font-mono">public/</span>
+                            are served by the stand to anyone.
                         </p>
                         <InputError class="mt-2" :message="form.errors.backup_command" />
                     </div>
