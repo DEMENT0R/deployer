@@ -208,6 +208,45 @@ const checkHealth = async () => {
     }
 };
 
+const dumps = ref([]);
+const dumpsDirectory = ref(null);
+const dumpsLoading = ref(false);
+const dumpsError = ref('');
+
+// Каталог дампов лежит вне проекта, читается с диска — отдельным запросом, а не в пропсах
+// страницы: список инстанса не должен ждать обхода каталога.
+const loadDumps = async () => {
+    if (!props.instance.has_backups) return;
+
+    dumpsLoading.value = true;
+    dumpsError.value = '';
+
+    try {
+        const { data } = await axios.get(
+            route('instances.backups.index', props.instance.id),
+        );
+        dumps.value = data.dumps ?? [];
+        dumpsDirectory.value = data.directory ?? null;
+    } catch (error) {
+        dumpsError.value =
+            error.response?.data?.message ?? 'Failed to load the dumps.';
+    } finally {
+        dumpsLoading.value = false;
+    }
+};
+
+const formatSize = (bytes) => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+    return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+};
+
+const formatMoment = (value) =>
+    new Date(value).toLocaleString(undefined, {
+        dateStyle: 'short',
+        timeStyle: 'short',
+    });
+
 let pollInterval = null;
 
 const startPolling = () => {
@@ -311,6 +350,7 @@ const closeLog = () => {
 
 onMounted(() => {
     checkHealth();
+    loadDumps();
 });
 
 onUnmounted(() => {
@@ -477,17 +517,63 @@ onUnmounted(() => {
                             </div>
                         </div>
 
-                        <div v-if="canRollback">
+                        <div v-if="canRollback || instance.has_backups">
                             <p class="mb-2 text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
                                 Recovery
                             </p>
-                            <div class="flex flex-wrap gap-2">
+                            <div v-if="canRollback" class="flex flex-wrap gap-2">
                                 <DangerButton
                                     :disabled="isRunning"
                                     @click="rollback"
                                 >
                                     Rollback
                                 </DangerButton>
+                            </div>
+
+                            <div v-if="instance.has_backups" class="mt-3">
+                                <div class="flex items-center gap-2">
+                                    <p class="text-xs font-medium text-gray-700 dark:text-gray-300">
+                                        Database dumps
+                                    </p>
+                                    <button
+                                        type="button"
+                                        class="text-xs text-indigo-600 hover:underline disabled:opacity-50 dark:text-indigo-400"
+                                        :disabled="dumpsLoading"
+                                        @click="loadDumps"
+                                    >
+                                        {{ dumpsLoading ? '…' : '↻' }}
+                                    </button>
+                                </div>
+                                <p
+                                    v-if="dumpsDirectory"
+                                    class="mt-1 break-all font-mono text-xs text-gray-500 dark:text-gray-400"
+                                >
+                                    {{ dumpsDirectory }}
+                                </p>
+                                <p
+                                    v-if="dumpsError"
+                                    class="mt-1 break-words text-xs text-red-600 dark:text-red-400"
+                                >
+                                    {{ dumpsError }}
+                                </p>
+                                <p
+                                    v-else-if="!dumpsLoading && dumps.length === 0"
+                                    class="mt-1 text-xs text-gray-500 dark:text-gray-400"
+                                >
+                                    No dumps yet — the backup step has not written any.
+                                </p>
+                                <ul v-else class="mt-2 space-y-1">
+                                    <li
+                                        v-for="dump in dumps"
+                                        :key="dump.name"
+                                        class="flex flex-wrap items-baseline gap-x-2 text-xs text-gray-600 dark:text-gray-300"
+                                    >
+                                        <span class="font-mono">{{ dump.name }}</span>
+                                        <span class="text-gray-400 dark:text-gray-500">
+                                            {{ formatSize(dump.size) }} · {{ formatMoment(dump.modified_at) }}
+                                        </span>
+                                    </li>
+                                </ul>
                             </div>
                         </div>
                     </div>

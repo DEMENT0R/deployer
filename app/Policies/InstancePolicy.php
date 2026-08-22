@@ -22,6 +22,15 @@ class InstancePolicy
         return $user->hasAccessTo($instance) && $instance->is_active;
     }
 
+    /**
+     * Дампы инстанса и восстановление из них — только админу: это перезапись базы стенда
+     * целиком, и список дампов заодно показывает имя её базы.
+     */
+    public function restore(User $user, Instance $instance): bool
+    {
+        return $user->isAdmin();
+    }
+
     public function create(User $user): bool
     {
         return $user->isAdmin();

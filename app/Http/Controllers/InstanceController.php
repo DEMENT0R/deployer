@@ -6,6 +6,7 @@ use App\Http\Controllers\Concerns\FormatsDeployments;
 use App\Models\Deployment;
 use App\Models\Instance;
 use App\Services\Deploy\GitBranchResolver;
+use App\Services\InstanceBackupService;
 use App\Services\InstanceEnvService;
 use App\Services\InstanceStatusService;
 use Illuminate\Http\Request;
@@ -44,6 +45,7 @@ class InstanceController extends Controller
         Instance $instance,
         GitBranchResolver $branchResolver,
         InstanceStatusService $statusService,
+        InstanceBackupService $backups,
     ): Response {
         $this->authorize('view', $instance);
 
@@ -63,7 +65,7 @@ class InstanceController extends Controller
         $latestDeployment = $instance->deployments()->latest()->first();
 
         return Inertia::render('Instances/Show', [
-            'instance' => $this->formatInstance($instance),
+            'instance' => $this->formatInstance($instance, $request, $backups),
             'branches' => $branches['branches'],
             'currentBranch' => $branches['current'],
             'branchError' => $branchError,
@@ -124,7 +126,7 @@ class InstanceController extends Controller
     /**
      * @return array<string, mixed>
      */
-    private function formatInstance(Instance $instance): array
+    private function formatInstance(Instance $instance, Request $request, InstanceBackupService $backups): array
     {
         return [
             'id' => $instance->id,
@@ -138,6 +140,10 @@ class InstanceController extends Controller
             'has_composer_command' => filled($instance->composer_command),
             'has_cache_command' => filled($instance->cache_command),
             'has_backup_command' => filled($instance->backup_command),
+            // Каталог дампов известен, только когда бэкап снимает наш скрипт: чужой команде
+            // некуда заглядывать, и списка дампов у такого инстанса не будет.
+            'has_backups' => $request->user()->can('restore', $instance)
+                && $backups->directory($instance) !== null,
         ];
     }
 }

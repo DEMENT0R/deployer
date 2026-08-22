@@ -9,6 +9,7 @@ use App\Http\Controllers\BranchController;
 use App\Http\Controllers\ChangelogController;
 use App\Http\Controllers\DeployController;
 use App\Http\Controllers\DeploymentController;
+use App\Http\Controllers\InstanceBackupController;
 use App\Http\Controllers\InstanceController;
 use App\Http\Controllers\InstanceHealthController;
 use App\Http\Controllers\NotificationController;
@@ -36,6 +37,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/instances/{instance}/health', [InstanceHealthController::class, 'show'])
         ->middleware('throttle:30,1')
         ->name('instances.health');
+    Route::get('/instances/{instance}/backups', [InstanceBackupController::class, 'index'])
+        ->middleware('throttle:30,1')
+        ->name('instances.backups.index');
     Route::get('/instances/{instance}/branches', [BranchController::class, 'index'])->name('instances.branches.index');
     Route::post('/instances/{instance}/branches/refresh', [BranchController::class, 'refresh'])->name('instances.branches.refresh');
     Route::post('/instances/{instance}/deploy', [DeployController::class, 'store'])
