@@ -21,8 +21,10 @@ use App\Models\User;
 use App\Services\InstanceCacheService;
 use App\Services\InstanceEnvService;
 use App\Services\ScreenSessionService;
+use App\Support\Audit;
 use App\Support\BackupCommand;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Arr;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -74,6 +76,8 @@ class InstanceController extends Controller
     ): RedirectResponse {
         try {
             $envService->create($instance, $request->validated()['source']);
+
+            Audit::record('env.created', $instance->name, null, $instance);
         } catch (EnvWriteException|PathValidationException $exception) {
             return back()->withErrors(['env' => $exception->getMessage()]);
         }
@@ -100,6 +104,9 @@ class InstanceController extends Controller
 
         $message = 'Updated: '.implode(', ', $changed).'.';
         $errors = [];
+
+        // В журнал идут только имена ключей: среди них бывают пароли, а журнал видит любой админ.
+        Audit::record('env.updated', $instance->name, 'Changed: '.implode(', ', $changed), $instance);
 
         // Целевой проект с закэшированным конфигом новую БД не увидит: правка выглядела бы
         // применённой, а стенд продолжал бы ходить в старую базу. Чистим сразу. Пустая команда —
@@ -138,6 +145,8 @@ class InstanceController extends Controller
         } catch (CacheClearException|PathValidationException $exception) {
             return back()->withErrors(['cache' => $exception->getMessage()]);
         }
+
+        Audit::record('caches.cleared', $instance->name, null, $instance);
 
         return back()->with('success', 'Caches cleared.');
     }
@@ -192,6 +201,8 @@ class InstanceController extends Controller
 
         $instance = Instance::create($data);
         $instance->users()->sync($testerIds);
+
+        Audit::record('instance.created', $instance->name, "Path {$instance->path}", $instance);
 
         if ($copyFiles && $sourceInstanceId) {
             // Копирование каталога — минуты работы, поэтому идёт деплоем: очередь, живой лог,
@@ -250,7 +261,19 @@ class InstanceController extends Controller
         unset($data['tester_ids']);
 
         $instance->update($data);
-        $instance->users()->sync($testerIds);
+        $changed = array_keys(Arr::except($instance->getChanges(), ['updated_at']));
+        $sync = $instance->users()->sync($testerIds);
+
+        if (Arr::flatten($sync) !== []) {
+            $changed[] = 'testers';
+        }
+
+        Audit::record(
+            'instance.updated',
+            $instance->name,
+            $changed === [] ? 'Nothing changed.' : 'Changed: '.implode(', ', $changed),
+            $instance,
+        );
 
         return redirect()->route('admin.instances.index')
             ->with('success', 'Instance updated.');
@@ -258,6 +281,9 @@ class InstanceController extends Controller
 
     public function destroy(Instance $instance): RedirectResponse
     {
+        // Пишем до удаления: instance_id у записи журнала обнулится, а имя и путь останутся.
+        Audit::record('instance.deleted', $instance->name, "Path {$instance->path}", $instance);
+
         $instance->delete();
 
         return redirect()->route('admin.instances.index')

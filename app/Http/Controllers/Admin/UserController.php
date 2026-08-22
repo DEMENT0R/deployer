@@ -6,7 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreUserRequest;
 use App\Http\Requests\Admin\UpdateUserRequest;
 use App\Models\User;
+use App\Support\Audit;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Hash;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -39,12 +41,14 @@ class UserController extends Controller
 
     public function store(StoreUserRequest $request): RedirectResponse
     {
-        User::create([
+        $user = User::create([
             'name' => $request->validated('name'),
             'email' => $request->validated('email'),
             'password' => $request->validated('password'),
             'role' => $request->validated('role'),
         ]);
+
+        Audit::record('user.created', $user->email, "Role {$user->role->value}");
 
         return redirect()->route('admin.users.index')
             ->with('success', 'User created.');
@@ -74,7 +78,16 @@ class UserController extends Controller
             $user->password = Hash::make($data['password']);
         }
 
+        $changed = array_keys(Arr::except($user->getDirty(), ['updated_at']));
+
         $user->save();
+
+        // Смену пароля отмечаем фактом: значения секретов в журнал не попадают никогда.
+        Audit::record(
+            'user.updated',
+            $user->email,
+            $changed === [] ? 'Nothing changed.' : 'Changed: '.implode(', ', $changed),
+        );
 
         return redirect()->route('admin.users.index')
             ->with('success', 'User updated.');
@@ -85,6 +98,8 @@ class UserController extends Controller
         if ($user->id === auth()->id()) {
             return back()->withErrors(['user' => 'You cannot delete your own account.']);
         }
+
+        Audit::record('user.deleted', $user->email, "Role {$user->role->value}");
 
         $user->delete();
 

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Exceptions\PathValidationException;
 use App\Models\Instance;
 use App\Services\InstanceLogService;
+use App\Support\Audit;
 use Illuminate\Http\JsonResponse;
 
 class InstanceLogController extends Controller
@@ -34,6 +35,8 @@ class InstanceLogController extends Controller
         if (! $cleared) {
             return response()->json(['message' => 'The log file is missing or not writable.'], 422);
         }
+
+        Audit::record('log.cleared', $instance->name, null, $instance);
 
         return response()->json($logs->tail($instance));
     }

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\ActivityController;
+use App\Http\Controllers\Admin\AuditController as AdminAuditController;
 use App\Http\Controllers\Admin\InstanceController as AdminInstanceController;
 use App\Http\Controllers\Admin\QueueController as AdminQueueController;
 use App\Http\Controllers\Admin\ScreenController as AdminScreenController;
@@ -75,6 +76,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
     Route::middleware('admin')->prefix('admin')->name('admin.')->group(function () {
+        Route::get('audit', [AdminAuditController::class, 'index'])->name('audit.index');
         Route::get('queues', [AdminQueueController::class, 'index'])->name('queues.index');
         Route::get('screens', [AdminScreenController::class, 'index'])->name('screens.index');
         Route::post('screens', [AdminScreenController::class, 'store'])

@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Instance;
 use App\Services\ScreenMonitorService;
 use App\Services\ScreenSessionService;
+use App\Support\Audit;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -44,6 +45,8 @@ class ScreenController extends Controller
             return back()->withErrors(['screen' => $exception->getMessage()]);
         }
 
+        Audit::record('screen.started', $session, "Instance {$instance->name}", $instance);
+
         return back()->with('success', "Session \"{$session}\" started.");
     }
 
@@ -59,6 +62,8 @@ class ScreenController extends Controller
         } catch (ScreenException $exception) {
             return back()->withErrors(['screen' => $exception->getMessage()]);
         }
+
+        Audit::record('screen.stopped', $validated['session']);
 
         return back()->with('success', "Session \"{$validated['session']}\" stopped.");
     }
