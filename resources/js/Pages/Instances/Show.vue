@@ -235,6 +235,38 @@ const loadDumps = async () => {
     }
 };
 
+// Восстановление затирает базу целиком, поэтому подтверждаем не «да/нет», а именем инстанса:
+// случайный клик мимо кнопки так не проходит.
+const restoreTarget = ref(null);
+const restoreConfirmation = ref('');
+
+const askRestore = (dump) => {
+    restoreTarget.value = dump;
+    restoreConfirmation.value = '';
+};
+
+const closeRestore = () => {
+    restoreTarget.value = null;
+    restoreConfirmation.value = '';
+};
+
+const restoreConfirmed = computed(
+    () => restoreConfirmation.value.trim() === props.instance.name,
+);
+
+const restore = () => {
+    if (!restoreConfirmed.value) return;
+
+    router.post(
+        route('instances.restore', props.instance.id),
+        { file: restoreTarget.value.name },
+        {
+            preserveScroll: true,
+            onFinish: closeRestore,
+        },
+    );
+};
+
 const formatSize = (bytes) => {
     if (bytes < 1024) return `${bytes} B`;
     if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
@@ -572,6 +604,14 @@ onUnmounted(() => {
                                         <span class="text-gray-400 dark:text-gray-500">
                                             {{ formatSize(dump.size) }} · {{ formatMoment(dump.modified_at) }}
                                         </span>
+                                        <button
+                                            type="button"
+                                            class="text-xs text-red-600 hover:underline disabled:opacity-50 dark:text-red-400"
+                                            :disabled="isRunning"
+                                            @click="askRestore(dump)"
+                                        >
+                                            Restore
+                                        </button>
                                     </li>
                                 </ul>
                             </div>
@@ -657,6 +697,34 @@ onUnmounted(() => {
                 />
             </div>
         </div>
+
+        <Modal :show="restoreTarget !== null" max-width="lg" @close="closeRestore">
+            <div v-if="restoreTarget" class="p-6">
+                <h3 class="font-medium text-gray-900 dark:text-gray-100">
+                    Restore the database of {{ instance.name }}?
+                </h3>
+                <p class="mt-2 text-sm text-gray-600 dark:text-gray-300">
+                    The current database is replaced by
+                    <span class="font-mono">{{ restoreTarget.name }}</span> in full. A fresh dump
+                    is taken first, so the current state stays recoverable.
+                </p>
+                <p class="mt-3 text-sm text-gray-600 dark:text-gray-300">
+                    Type <span class="font-mono">{{ instance.name }}</span> to confirm:
+                </p>
+                <input
+                    v-model="restoreConfirmation"
+                    type="text"
+                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"
+                    autocomplete="off"
+                />
+                <div class="mt-4 flex justify-end gap-2">
+                    <SecondaryButton @click="closeRestore">Cancel</SecondaryButton>
+                    <DangerButton :disabled="!restoreConfirmed" @click="restore">
+                        Restore database
+                    </DangerButton>
+                </div>
+            </div>
+        </Modal>
 
         <Modal :show="logDeployment !== null" max-width="2xl" @close="closeLog">
             <div v-if="logDeployment" class="p-6">

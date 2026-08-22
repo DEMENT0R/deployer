@@ -8,6 +8,7 @@ enum DeployStep: string
     case Copy = 'copy';
     case Rollback = 'rollback';
     case Backup = 'backup';
+    case Restore = 'restore';
     case Git = 'git';
     case Composer = 'composer';
     case Cache = 'cache';

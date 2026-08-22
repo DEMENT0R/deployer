@@ -9,6 +9,7 @@ use App\Enums\Platform;
 use App\Exceptions\DeployException;
 use App\Models\Deployment;
 use App\Models\Instance;
+use App\Services\InstanceBackupService;
 use Closure;
 use Throwable;
 
@@ -28,6 +29,7 @@ class InstanceDeployer
         private readonly ProcessRunner $processRunner,
         private readonly GitBranchResolver $branchResolver,
         private readonly FileCopyService $fileCopyService,
+        private readonly InstanceBackupService $backups,
     ) {}
 
     public function deploy(Deployment $deployment): void
@@ -67,6 +69,7 @@ class InstanceDeployer
                         DeployStep::Copy => $this->runCopy($deployment, $instance, $cwd, $onOutput),
                         DeployStep::Rollback => $this->runRollback($deployment, $cwd, $onOutput),
                         DeployStep::Backup => $this->runBackup($instance, $cwd, $onOutput),
+                        DeployStep::Restore => $this->runRestore($instance, $deployment, $cwd, $onOutput),
                         DeployStep::Git => $this->runGit($instance, $deployment, $cwd, $onOutput),
                         DeployStep::Composer => $this->runComposer($instance, $cwd, $onOutput),
                         DeployStep::Cache => $this->runCache($instance, $cwd, $onOutput),
@@ -203,6 +206,36 @@ class InstanceDeployer
         if (blank($command)) {
             return;
         }
+
+        $this->processRunner->runShellOrFail($command, $cwd, $onOutput);
+    }
+
+    /**
+     * Накат дампа обратно в базу. Имя файла контроллер кладёт в branch деплоя (так же, как
+     * коммит отката), но каталог мы всё равно перерешиваем сами: между постановкой в очередь
+     * и запуском джобы дамп могли удалить, а имя из браузера — не путь.
+     */
+    private function runRestore(Instance $instance, Deployment $deployment, string $cwd, Closure $onOutput): void
+    {
+        $name = (string) $deployment->branch;
+        $dump = $this->backups->resolve($instance, $name);
+
+        if ($dump === null) {
+            throw new DeployException("Dump is no longer available: {$name}");
+        }
+
+        // Страховочный дамп скрипт кладёт туда же, откуда взят этот: каталог у инстанса
+        // может быть и не дефолтным, поэтому root и слаг передаём разобранными, а не из конфига.
+        $directory = (string) $this->backups->directory($instance);
+
+        $command = sprintf(
+            'bash %s --file=%s --root=%s --slug=%s --keep=%d',
+            escapeshellarg(base_path('scripts/restore-db.sh')),
+            escapeshellarg($dump),
+            escapeshellarg(dirname($directory)),
+            escapeshellarg(basename($directory)),
+            (int) config('deployer.backup_keep'),
+        );
 
         $this->processRunner->runShellOrFail($command, $cwd, $onOutput);
     }

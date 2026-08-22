@@ -8,6 +8,7 @@ use App\Http\Requests\StoreDeploymentRequest;
 use App\Jobs\DeployInstanceJob;
 use App\Models\Deployment;
 use App\Models\Instance;
+use App\Services\InstanceBackupService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -63,6 +64,49 @@ class DeployController extends Controller
         DeployInstanceJob::dispatch($deployment->id);
 
         return back()->with('success', 'Deployment queued.');
+    }
+
+    /**
+     * Накат дампа обратно в базу стенда. Имя файла кладём в branch деплоя — так же, как
+     * коммит у отката; сам файл джоба разрешает заново, уже перед запуском.
+     */
+    public function restore(Request $request, Instance $instance, InstanceBackupService $backups): RedirectResponse
+    {
+        if (! $request->user()->can('restore', $instance)) {
+            abort(403);
+        }
+
+        $name = (string) $request->string('file');
+
+        if ($backups->resolve($instance, $name) === null) {
+            return back()->withErrors(['deploy' => 'No such dump for this instance.']);
+        }
+
+        $lock = Cache::lock("deploy:create:{$instance->id}", 10);
+
+        if (! $lock->get()) {
+            return back()->withErrors(['deploy' => 'A deployment is already in progress for this instance.']);
+        }
+
+        try {
+            if ($instance->deployments()->active()->exists()) {
+                return back()->withErrors(['deploy' => 'A deployment is already in progress for this instance.']);
+            }
+
+            $deployment = Deployment::create([
+                'instance_id' => $instance->id,
+                'user_id' => $request->user()->id,
+                'branch' => $name,
+                'action' => DeployAction::Restore,
+                'status' => DeployStatus::Pending,
+            ]);
+        } finally {
+            $lock->release();
+        }
+
+        DeployInstanceJob::dispatch($deployment->id);
+
+        return back()->with('success', 'Restore queued.');
     }
 
     /**

@@ -7,6 +7,7 @@ enum DeployAction: string
     case Full = 'full';
     case Branch = 'branch';
     case Backup = 'backup';
+    case Restore = 'restore';
     case Composer = 'composer';
     case Cache = 'cache';
     case Migrate = 'migrate';
@@ -19,13 +20,14 @@ enum DeployAction: string
     {
         return match ($this) {
             self::Full, self::Branch => true,
-            self::Backup, self::Composer, self::Cache, self::Migrate, self::Frontend, self::Clone, self::Copy, self::Rollback => false,
+            self::Backup, self::Restore, self::Composer, self::Cache, self::Migrate, self::Frontend, self::Clone, self::Copy, self::Rollback => false,
         };
     }
 
     /**
      * Действия, которые тестер может запустить со страницы инстанса. Clone и Copy здесь нет:
-     * это разовый bootstrap рабочей копии, доступный только из админки.
+     * это разовый bootstrap рабочей копии, доступный только из админки. Restore — тоже:
+     * он затирает базу стенда и идёт своим эндпоинтом, админским.
      *
      * @return list<string>
      */
@@ -55,6 +57,7 @@ enum DeployAction: string
             self::Full => [DeployStep::Backup, DeployStep::Git, DeployStep::Composer, DeployStep::Cache, DeployStep::Migrate, DeployStep::Frontend],
             self::Branch => [DeployStep::Git],
             self::Backup => [DeployStep::Backup],
+            self::Restore => [DeployStep::Restore],
             self::Composer => [DeployStep::Composer],
             self::Cache => [DeployStep::Cache],
             self::Migrate => [DeployStep::Migrate],

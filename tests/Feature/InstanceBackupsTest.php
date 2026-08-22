@@ -2,11 +2,14 @@
 
 namespace Tests\Feature;
 
+use App\Enums\DeployAction;
 use App\Enums\UserRole;
+use App\Jobs\DeployInstanceJob;
 use App\Models\Instance;
 use App\Models\User;
 use App\Services\InstanceBackupService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
 class InstanceBackupsTest extends TestCase
@@ -102,6 +105,81 @@ class InstanceBackupsTest extends TestCase
         $this->assertNotNull($service->resolve($instance, 'app_2026-08-21_0300.sql.gz'));
         $this->assertNull($service->resolve($instance, 'missing.sql.gz'));
         $this->assertNull($service->resolve($instance, '../../etc/passwd'));
+    }
+
+    public function test_admin_can_queue_a_restore_from_a_dump(): void
+    {
+        Queue::fake();
+
+        $instance = $this->instanceWithDumps(['app_2026-08-21_0300.sql.gz']);
+        $admin = User::factory()->create(['role' => UserRole::Admin]);
+
+        $this->actingAs($admin)
+            ->post(route('instances.restore', $instance), ['file' => 'app_2026-08-21_0300.sql.gz'])
+            ->assertSessionHasNoErrors();
+
+        $deployment = $instance->deployments()->sole();
+
+        $this->assertSame(DeployAction::Restore, $deployment->action);
+        $this->assertSame('app_2026-08-21_0300.sql.gz', $deployment->branch);
+
+        Queue::assertPushed(DeployInstanceJob::class);
+    }
+
+    public function test_a_tester_cannot_restore(): void
+    {
+        Queue::fake();
+
+        $instance = $this->instanceWithDumps(['app_2026-08-21_0300.sql.gz']);
+        $tester = User::factory()->create(['role' => UserRole::Tester]);
+        $instance->users()->attach($tester);
+
+        $this->actingAs($tester)
+            ->post(route('instances.restore', $instance), ['file' => 'app_2026-08-21_0300.sql.gz'])
+            ->assertForbidden();
+
+        Queue::assertNothingPushed();
+        $this->assertSame(0, $instance->deployments()->count());
+    }
+
+    /** Имя приходит из браузера: принимаем только то, что и правда лежит в каталоге. */
+    public function test_restoring_an_unknown_dump_is_refused(): void
+    {
+        Queue::fake();
+
+        $instance = $this->instanceWithDumps(['app_2026-08-21_0300.sql.gz']);
+        $admin = User::factory()->create(['role' => UserRole::Admin]);
+
+        $this->actingAs($admin)
+            ->post(route('instances.restore', $instance), ['file' => '../../etc/passwd'])
+            ->assertSessionHasErrors('deploy');
+
+        Queue::assertNothingPushed();
+        $this->assertSame(0, $instance->deployments()->count());
+    }
+
+    public function test_the_restore_action_runs_only_that_step(): void
+    {
+        $this->assertSame(['restore'], array_map(
+            fn ($step) => $step->value,
+            DeployAction::Restore->steps(),
+        ));
+    }
+
+    /** Тестер не должен дотянуться до наката базы и через общий эндпоинт деплоя. */
+    public function test_restore_is_not_triggerable_through_the_deploy_endpoint(): void
+    {
+        Queue::fake();
+
+        $instance = $this->instanceWithDumps(['app_2026-08-21_0300.sql.gz']);
+        $tester = User::factory()->create(['role' => UserRole::Tester]);
+        $instance->users()->attach($tester);
+
+        $this->actingAs($tester)
+            ->post(route('instances.deploy', $instance), ['action' => DeployAction::Restore->value])
+            ->assertSessionHasErrors('action');
+
+        Queue::assertNothingPushed();
     }
 
     /**
