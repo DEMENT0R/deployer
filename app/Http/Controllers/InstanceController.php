@@ -26,7 +26,7 @@ class InstanceController extends Controller
 
         $instances = $request->user()
             ->accessibleInstances()
-            ->with(['deployments' => fn ($query) => $query->latest()->limit(1)])
+            ->with(['holder:id,name', 'deployments' => fn ($query) => $query->latest()->limit(1)])
             ->orderBy('name')
             ->get();
 
@@ -119,6 +119,7 @@ class InstanceController extends Controller
             'url' => $instance->url,
             'tunnel_url' => $instance->tunnelUrl(),
             'default_branch' => $instance->default_branch,
+            'hold' => $instance->holdSummary(),
             'latest_deployment' => $latest ? $this->formatDeployment($latest) : null,
         ];
     }
@@ -145,6 +146,7 @@ class InstanceController extends Controller
             'can_clear_log' => $request->user()->can('deploy', $instance),
             'has_backups' => $request->user()->can('restore', $instance)
                 && $backups->directory($instance) !== null,
+            'hold' => $instance->holdSummary(),
         ];
     }
 }

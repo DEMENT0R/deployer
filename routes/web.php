@@ -13,6 +13,7 @@ use App\Http\Controllers\DeploymentController;
 use App\Http\Controllers\InstanceBackupController;
 use App\Http\Controllers\InstanceController;
 use App\Http\Controllers\InstanceHealthController;
+use App\Http\Controllers\InstanceHoldController;
 use App\Http\Controllers\InstanceLogController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProfileController;
@@ -53,6 +54,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/instances/{instance}/deploy', [DeployController::class, 'store'])
         ->middleware('throttle:10,1')
         ->name('instances.deploy');
+    Route::post('/instances/{instance}/hold', [InstanceHoldController::class, 'store'])
+        ->middleware('throttle:20,1')
+        ->name('instances.hold.store');
+    Route::delete('/instances/{instance}/hold', [InstanceHoldController::class, 'destroy'])
+        ->middleware('throttle:20,1')
+        ->name('instances.hold.destroy');
     Route::post('/instances/{instance}/restore', [DeployController::class, 'restore'])
         ->middleware('throttle:10,1')
         ->name('instances.restore');

@@ -49,6 +49,12 @@ const props = defineProps({
 
 const page = usePage();
 
+const formatMoment = (value) =>
+    new Date(value).toLocaleString(undefined, {
+        dateStyle: 'short',
+        timeStyle: 'short',
+    });
+
 const deployError = computed(() => page.props.errors?.deploy);
 
 const selectedBranch = ref(
@@ -135,10 +141,39 @@ const cancelDeployment = () => {
     );
 };
 
+// Занятость — предупреждение, а не запрет: бывает, что перекатить надо срочно и всё равно.
+const heldByOther = computed(
+    () => !!props.instance.hold && props.instance.hold.user_id !== page.props.auth.user?.id,
+);
+
 const deploy = (action) => {
+    if (
+        heldByOther.value &&
+        !confirm(
+            `${props.instance.hold.user} is testing on this stand until ` +
+                `${formatMoment(props.instance.hold.until)}. Deploy anyway?`,
+        )
+    ) {
+        return;
+    }
+
     form.action = action;
     form.branch = selectedBranch.value;
     form.post(route('instances.deploy', props.instance.id), {
+        preserveScroll: true,
+    });
+};
+
+const holdForm = useForm({ hours: 4, note: '' });
+
+const takeStand = () => {
+    holdForm.post(route('instances.hold.store', props.instance.id), {
+        preserveScroll: true,
+    });
+};
+
+const releaseStand = () => {
+    router.delete(route('instances.hold.destroy', props.instance.id), {
         preserveScroll: true,
     });
 };
@@ -314,12 +349,6 @@ const formatSize = (bytes) => {
     if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
     return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 };
-
-const formatMoment = (value) =>
-    new Date(value).toLocaleString(undefined, {
-        dateStyle: 'short',
-        timeStyle: 'short',
-    });
 
 let pollInterval = null;
 
@@ -528,6 +557,60 @@ onUnmounted(() => {
                             </p>
                         </div>
                     </div>
+
+                    <div
+                        v-if="instance.hold"
+                        class="mb-4 rounded-md border px-4 py-3 text-sm"
+                        :class="
+                            heldByOther
+                                ? 'border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-700 dark:bg-amber-900/30 dark:text-amber-200'
+                                : 'border-gray-200 bg-gray-50 text-gray-700 dark:border-gray-700 dark:bg-gray-900/40 dark:text-gray-300'
+                        "
+                    >
+                        <div class="flex flex-wrap items-center justify-between gap-2">
+                            <p>
+                                <span class="font-medium">
+                                    {{ heldByOther ? instance.hold.user : 'You' }}
+                                </span>
+                                is testing here until {{ formatMoment(instance.hold.until) }}
+                                <span v-if="instance.hold.note">— {{ instance.hold.note }}</span>
+                            </p>
+                            <SecondaryButton
+                                v-if="!heldByOther || $page.props.auth.user?.is_admin"
+                                @click="releaseStand"
+                            >
+                                Release
+                            </SecondaryButton>
+                        </div>
+                    </div>
+
+                    <div v-else class="mb-4 flex flex-wrap items-end gap-2">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-500 dark:text-gray-400">
+                                Take the stand for
+                            </label>
+                            <select
+                                v-model.number="holdForm.hours"
+                                class="mt-1 rounded-md border-gray-300 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"
+                            >
+                                <option :value="1">1 hour</option>
+                                <option :value="4">4 hours</option>
+                                <option :value="8">8 hours</option>
+                                <option :value="24">a day</option>
+                            </select>
+                        </div>
+                        <input
+                            v-model="holdForm.note"
+                            type="text"
+                            placeholder="What for (optional)"
+                            class="mt-1 w-56 rounded-md border-gray-300 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"
+                        />
+                        <SecondaryButton :disabled="holdForm.processing" @click="takeStand">
+                            Take
+                        </SecondaryButton>
+                    </div>
+
+                    <InputError class="mb-2" :message="page.props.errors?.hold" />
 
                     <div class="space-y-4">
                         <div>

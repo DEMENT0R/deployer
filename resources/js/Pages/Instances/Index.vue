@@ -16,6 +16,12 @@ defineProps({
     },
 });
 
+const formatMoment = (value) =>
+    new Date(value).toLocaleString(undefined, {
+        dateStyle: 'short',
+        timeStyle: 'short',
+    });
+
 onMounted(() => {
     router.reload({ only: ['databases'] });
 });
@@ -60,6 +66,14 @@ onMounted(() => {
                         </div>
                         <p class="truncate text-sm text-gray-500 dark:text-gray-400">
                             {{ instance.path }}
+                        </p>
+                        <p
+                            v-if="instance.hold"
+                            class="mt-2 truncate rounded bg-amber-50 px-2 py-1 text-xs text-amber-900 dark:bg-amber-900/30 dark:text-amber-200"
+                        >
+                            Taken by {{ instance.hold.user }} until
+                            {{ formatMoment(instance.hold.until) }}
+                            <span v-if="instance.hold.note">— {{ instance.hold.note }}</span>
                         </p>
                         <div class="mt-3 space-y-1 text-xs text-gray-400 dark:text-gray-500">
                             <p v-if="instance.latest_deployment">
