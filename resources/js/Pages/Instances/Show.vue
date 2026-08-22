@@ -208,6 +208,48 @@ const checkHealth = async () => {
     }
 };
 
+// Лог стенда. Тянем по кнопке, а не при открытии страницы: файл читается с диска, и в
+// девяти случаях из десяти он не нужен.
+const appLog = ref(null);
+const appLogOpen = ref(false);
+const appLogLoading = ref(false);
+const appLogError = ref('');
+
+const appLogText = computed(() => (appLog.value?.lines ?? []).join('\n'));
+
+const loadAppLog = async () => {
+    appLogLoading.value = true;
+    appLogError.value = '';
+    appLogOpen.value = true;
+
+    try {
+        const { data } = await axios.get(route('instances.log.show', props.instance.id));
+        appLog.value = data;
+    } catch (error) {
+        appLogError.value =
+            error.response?.data?.message ?? 'Failed to read the log.';
+    } finally {
+        appLogLoading.value = false;
+    }
+};
+
+const clearAppLog = async () => {
+    if (!confirm('Empty the application log of this stand?')) return;
+
+    appLogLoading.value = true;
+    appLogError.value = '';
+
+    try {
+        const { data } = await axios.delete(route('instances.log.destroy', props.instance.id));
+        appLog.value = data;
+    } catch (error) {
+        appLogError.value =
+            error.response?.data?.message ?? 'Failed to clear the log.';
+    } finally {
+        appLogLoading.value = false;
+    }
+};
+
 const dumps = ref([]);
 const dumpsDirectory = ref(null);
 const dumpsLoading = ref(false);
@@ -689,6 +731,69 @@ onUnmounted(() => {
 
                     <InstanceGitStatus :status="gitStatus" />
                 </Deferred>
+
+                <div class="rounded-lg bg-white p-6 shadow-sm dark:bg-gray-800">
+                    <div class="flex flex-wrap items-center justify-between gap-2">
+                        <h3 class="font-medium text-gray-900 dark:text-gray-100">
+                            Application log
+                        </h3>
+                        <div class="flex flex-wrap gap-2">
+                            <SecondaryButton :disabled="appLogLoading" @click="loadAppLog">
+                                {{ appLogOpen ? 'Refresh' : 'Show log' }}
+                            </SecondaryButton>
+                            <SecondaryButton v-if="appLogOpen" @click="appLogOpen = false">
+                                Hide
+                            </SecondaryButton>
+                            <DangerButton
+                                v-if="appLogOpen && instance.can_clear_log"
+                                :disabled="appLogLoading"
+                                @click="clearAppLog"
+                            >
+                                Clear
+                            </DangerButton>
+                        </div>
+                    </div>
+
+                    <template v-if="appLogOpen">
+                        <p
+                            v-if="appLogError"
+                            class="mt-3 whitespace-pre-line break-words text-sm text-red-600 dark:text-red-400"
+                        >
+                            {{ appLogError }}
+                        </p>
+                        <p
+                            v-else-if="appLogLoading && !appLog"
+                            class="mt-3 text-sm text-gray-500 dark:text-gray-400"
+                        >
+                            Reading the log…
+                        </p>
+                        <template v-else-if="appLog">
+                            <p class="mt-2 break-all font-mono text-xs text-gray-500 dark:text-gray-400">
+                                {{ appLog.path }}
+                            </p>
+                            <p
+                                v-if="!appLog.exists"
+                                class="mt-3 text-sm text-gray-500 dark:text-gray-400"
+                            >
+                                No log file yet.
+                            </p>
+                            <template v-else>
+                                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                    {{ formatSize(appLog.size) }} ·
+                                    {{ formatMoment(appLog.modified_at) }}
+                                    <span v-if="appLog.truncated">· showing the tail only</span>
+                                </p>
+                                <pre
+                                    v-if="appLog.lines.length"
+                                    class="mt-3 max-h-96 overflow-auto rounded bg-gray-900 p-4 text-xs leading-relaxed text-gray-100"
+                                >{{ appLogText }}</pre>
+                                <p v-else class="mt-3 text-sm text-gray-500 dark:text-gray-400">
+                                    The log is empty.
+                                </p>
+                            </template>
+                        </template>
+                    </template>
+                </div>
 
                 <DeploymentHistory
                     :deployments="deployments"

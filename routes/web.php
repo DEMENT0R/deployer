@@ -12,6 +12,7 @@ use App\Http\Controllers\DeploymentController;
 use App\Http\Controllers\InstanceBackupController;
 use App\Http\Controllers\InstanceController;
 use App\Http\Controllers\InstanceHealthController;
+use App\Http\Controllers\InstanceLogController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
@@ -40,6 +41,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/instances/{instance}/backups', [InstanceBackupController::class, 'index'])
         ->middleware('throttle:30,1')
         ->name('instances.backups.index');
+    Route::get('/instances/{instance}/log', [InstanceLogController::class, 'show'])
+        ->middleware('throttle:60,1')
+        ->name('instances.log.show');
+    Route::delete('/instances/{instance}/log', [InstanceLogController::class, 'destroy'])
+        ->middleware('throttle:10,1')
+        ->name('instances.log.destroy');
     Route::get('/instances/{instance}/branches', [BranchController::class, 'index'])->name('instances.branches.index');
     Route::post('/instances/{instance}/branches/refresh', [BranchController::class, 'refresh'])->name('instances.branches.refresh');
     Route::post('/instances/{instance}/deploy', [DeployController::class, 'store'])

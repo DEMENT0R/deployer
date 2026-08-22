@@ -142,6 +142,7 @@ class InstanceController extends Controller
             'has_backup_command' => filled($instance->backup_command),
             // Каталог дампов известен, только когда бэкап снимает наш скрипт: чужой команде
             // некуда заглядывать, и списка дампов у такого инстанса не будет.
+            'can_clear_log' => $request->user()->can('deploy', $instance),
             'has_backups' => $request->user()->can('restore', $instance)
                 && $backups->directory($instance) !== null,
         ];
