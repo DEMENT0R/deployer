@@ -261,10 +261,16 @@ sudo install -d -m 700 -o www-data -g www-data /var/backups/deployer
 удалить. Схему БД под старый дамп никто не откатывает — если после дампа проехали миграции,
 восстанавливайте вместе с кодом (`Rollback`).
 
+Дамп льётся с `check_constraint_checks = OFF`: восстановление возвращает базу в то состояние,
+в котором её сняли, а не перепроверяет данные заново. Иначе накат собственного же дампа падает
+посреди заливки на первой строке, не проходящей CHECK-ограничение, — а такие строки в живой базе
+попадаются (у MariaDB колонка `json` — это `CHECK json_valid`).
+
 То же самое руками:
 
 ```
-gunzip -c /var/backups/deployer/my-project/app_2026-08-21_0312.sql.gz | mysql -u root -p app
+gunzip -c /var/backups/deployer/my-project/app_2026-08-21_0312.sql.gz \
+    | mysql -u root -p --init-command="SET SESSION check_constraint_checks = OFF" app
 ```
 
 Каждый шаг проходит `pending` → `running` → `success` / `failed` (backup и composer получают `skipped`,

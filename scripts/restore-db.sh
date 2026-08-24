@@ -74,8 +74,24 @@ trap 'rm -f "$config"' EXIT
 printf '[client]\nhost=%s\nport=%s\nuser=%s\npassword="%s"\n' \
     "$host" "$port" "$user" "$password" > "$config"
 
+# CHECK-ограничения при накате дампа проверяются, а mysqldump, в отличие от внешних ключей
+# и уникальности, их не отключает. Живая база при этом вполне может содержать строки, которые
+# ограничению не удовлетворяют: его добавили уже поверх данных, или данные приехали из MySQL,
+# где такого ограничения не было (у MariaDB колонка JSON — это CHECK json_valid). Тогда база
+# падает на восстановлении собственного же дампа, на середине, оставляя стенд без данных.
+# Восстановление обязано вернуть базу как было, а не перепроверять её содержимое.
+prelude=
+check_variable=$("$client" --defaults-extra-file="$config" --batch --skip-column-names \
+    --execute="SHOW VARIABLES LIKE 'check_constraint_checks'" 2>/dev/null || true)
+
+if [ -n "$check_variable" ]; then
+    prelude='SET SESSION check_constraint_checks = OFF;'
+else
+    echo "[restore] no check_constraint_checks on this server, restoring with checks on"
+fi
+
 echo "[restore] restoring $database from $file"
-gunzip -c "$file" | "$client" --defaults-extra-file="$config" \
-    --default-character-set=utf8mb4 "$database"
+{ [ -z "$prelude" ] || echo "$prelude"; gunzip -c "$file"; } | "$client" \
+    --defaults-extra-file="$config" --default-character-set=utf8mb4 "$database"
 
 echo "[restore] $database restored from $(basename "$file")"
