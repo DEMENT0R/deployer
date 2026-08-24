@@ -266,10 +266,16 @@ sudo install -d -m 700 -o www-data -g www-data /var/backups/deployer
 посреди заливки на первой строке, не проходящей CHECK-ограничение, — а такие строки в живой базе
 попадаются (у MariaDB колонка `json` — это `CHECK json_valid`).
 
+Из потока по дороге вырезается `DEFINER` у view, триггеров и процедур: пересоздать объект
+с чужим `DEFINER` может только обладатель `SUPER` (`SET USER`), а пользователь стенда им не
+является — иначе накат обрывается на первом же триггере с `ERROR 1227`. Владельцем объектов
+становится тот пользователь, под которым идёт восстановление.
+
 То же самое руками:
 
 ```
 gunzip -c /var/backups/deployer/my-project/app_2026-08-21_0312.sql.gz \
+    | LC_ALL=C sed -e '/^\/\*!/ s/DEFINER=`[^`]*`@`[^`]*`//g' \
     | mysql -u root -p --init-command="SET SESSION check_constraint_checks = OFF" app
 ```
 

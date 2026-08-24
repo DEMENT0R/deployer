@@ -90,8 +90,20 @@ else
     echo "[restore] no check_constraint_checks on this server, restoring with checks on"
 fi
 
+# У view, триггеров и процедур mysqldump сохраняет DEFINER — пользователя, от чьего имени они
+# создавались. Пересоздать объект с чужим DEFINER может только обладатель SUPER (SET USER),
+# а пользователь стенда — это обычный пользователь одной базы, и накат обрывается на первом же
+# триггере: ERROR 1227. Кому именно принадлежат объекты, на стенде значения не имеет — всё
+# ходит в базу под одним пользователем, поэтому DEFINER вырезаем, и владельцем становится он же.
+#
+# Правим только строки исполняемых комментариев — в них mysqldump и пишет DEFINER. Тем же
+# сочетанием символов внутри INSERT (в тексте поля) занимать себя не надо. LC_ALL=C — чтобы
+# sed не спотыкался о двоичные данные дампа, разбирая их как текст в кодировке локали.
+strip_definer='/^\/\*!/ s/DEFINER=`[^`]*`@`[^`]*`//g'
+
 echo "[restore] restoring $database from $file"
-{ [ -z "$prelude" ] || echo "$prelude"; gunzip -c "$file"; } | "$client" \
-    --defaults-extra-file="$config" --default-character-set=utf8mb4 "$database"
+{ [ -z "$prelude" ] || echo "$prelude"; gunzip -c "$file"; } \
+    | LC_ALL=C sed -e "$strip_definer" \
+    | "$client" --defaults-extra-file="$config" --default-character-set=utf8mb4 "$database"
 
 echo "[restore] $database restored from $(basename "$file")"
