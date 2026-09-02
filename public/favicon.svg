@@ -1,12 +1,12 @@
-<template>
-    <svg
-        viewBox="0 0 24 24"
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+    <rect width="32" height="32" rx="7" fill="#4F46E5" />
+    <g
+        transform="translate(3.2 3.2) scale(1.0667)"
         fill="none"
-        stroke="currentColor"
-        stroke-width="1.7"
+        stroke="#fff"
+        stroke-width="2"
         stroke-linecap="round"
         stroke-linejoin="round"
-        xmlns="http://www.w3.org/2000/svg"
     >
         <circle cx="6" cy="6" r="2.2" />
         <circle cx="6" cy="18" r="2.2" />
@@ -14,5 +14,5 @@
         <path d="M8.2 12h7.2" />
         <path d="M13.2 9.9 15.4 12l-2.2 2.1" />
         <rect x="17" y="8.5" width="4.5" height="7" rx="1.5" />
-    </svg>
-</template>
+    </g>
+</svg>
