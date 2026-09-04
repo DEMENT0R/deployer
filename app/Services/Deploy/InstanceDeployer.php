@@ -21,7 +21,7 @@ class InstanceDeployer
      *
      * @var list<DeployStep>
      */
-    private const OPTIONAL_STEPS = [DeployStep::Backup, DeployStep::Composer, DeployStep::Cache];
+    private const OPTIONAL_STEPS = [DeployStep::Backup, DeployStep::Composer, DeployStep::Cache, DeployStep::Test];
 
     public function __construct(
         private readonly PathValidator $pathValidator,
@@ -75,6 +75,7 @@ class InstanceDeployer
                         DeployStep::Cache => $this->runCache($instance, $cwd, $onOutput),
                         DeployStep::Migrate => $this->runMigrate($instance, $cwd, $onOutput),
                         DeployStep::Frontend => $this->runFrontend($instance, $cwd, $onOutput),
+                        DeployStep::Test => $this->runTest($instance, $cwd, $onOutput),
                     };
                 });
             }
@@ -272,6 +273,21 @@ class InstanceDeployer
         $this->processRunner->runShellOrFail($instance->frontend_command, $cwd, $onOutput);
     }
 
+    /**
+     * Прогон тестов целевого проекта. Свой таймаут: сюит идёт дольше любого другого шага,
+     * а общий DEPLOYER_TIMEOUT поднимать ради него — значит отпустить и composer с фронтом.
+     */
+    private function runTest(Instance $instance, string $cwd, Closure $onOutput): void
+    {
+        $command = $instance->test_command;
+
+        if (blank($command)) {
+            return;
+        }
+
+        $this->processRunner->runShellOrFail($command, $cwd, $onOutput, (int) config('deployer.test_timeout'));
+    }
+
     /** Команда шага там, где шаг задаётся командой; у git/clone/copy/rollback своя логика. */
     private function stepCommand(Instance $instance, DeployStep $step): ?string
     {
@@ -281,6 +297,7 @@ class InstanceDeployer
             DeployStep::Cache => $instance->cache_command,
             DeployStep::Migrate => $instance->migrate_command,
             DeployStep::Frontend => $instance->frontend_command,
+            DeployStep::Test => $instance->test_command,
             default => null,
         };
     }

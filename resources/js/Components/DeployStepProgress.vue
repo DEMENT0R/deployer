@@ -21,6 +21,7 @@ const stepOrder = [
     'cache',
     'migrate',
     'frontend',
+    'test',
 ];
 
 const stepLabels = {
@@ -34,6 +35,7 @@ const stepLabels = {
     cache: 'Caches',
     migrate: 'Migrate',
     frontend: 'Frontend',
+    test: 'Tests',
 };
 
 const visibleSteps = () =>

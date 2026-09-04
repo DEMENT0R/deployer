@@ -27,6 +27,13 @@ return [
 
     'default_timeout' => (int) env('DEPLOYER_TIMEOUT', 600),
 
+    /*
+    | Таймаут шага тестов, отдельный от default_timeout: сюит идёт дольше любого другого
+    | шага. Должен оставаться меньше job_timeout — иначе очередь снимет джобу раньше, чем
+    | сработает таймаут команды, и деплой останется в running без причины в логе.
+    */
+    'test_timeout' => (int) env('DEPLOYER_TEST_TIMEOUT', 900),
+
     'branch_cache_ttl' => (int) env('DEPLOYER_BRANCH_CACHE_TTL', 300),
 
     /*

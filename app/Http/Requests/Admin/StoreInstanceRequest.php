@@ -91,6 +91,7 @@ class StoreInstanceRequest extends FormRequest
             'backup_command' => ['nullable', 'string', 'max:1024'],
             'migrate_command' => ['required', 'string', 'max:1024'],
             'frontend_command' => ['required', 'string', 'max:1024'],
+            'test_command' => ['nullable', 'string', 'max:1024'],
             'allowed_path_prefix' => ['nullable', 'string', 'max:1024'],
             // Имя уезжает в argv команды screen, поэтому только безопасный алфавит.
             'screen_session' => [

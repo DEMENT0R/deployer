@@ -12,6 +12,7 @@ enum DeployAction: string
     case Cache = 'cache';
     case Migrate = 'migrate';
     case Frontend = 'frontend';
+    case Test = 'test';
     case Clone = 'clone';
     case Copy = 'copy';
     case Rollback = 'rollback';
@@ -20,7 +21,7 @@ enum DeployAction: string
     {
         return match ($this) {
             self::Full, self::Branch => true,
-            self::Backup, self::Restore, self::Composer, self::Cache, self::Migrate, self::Frontend, self::Clone, self::Copy, self::Rollback => false,
+            self::Backup, self::Restore, self::Composer, self::Cache, self::Migrate, self::Frontend, self::Test, self::Clone, self::Copy, self::Rollback => false,
         };
     }
 
@@ -41,6 +42,7 @@ enum DeployAction: string
             self::Cache->value,
             self::Migrate->value,
             self::Frontend->value,
+            self::Test->value,
         ];
     }
 
@@ -62,6 +64,10 @@ enum DeployAction: string
             self::Cache => [DeployStep::Cache],
             self::Migrate => [DeployStep::Migrate],
             self::Frontend => [DeployStep::Frontend],
+            // Только по кнопке и никогда внутри цепочки: тесты целевого проекта ходят в базу
+            // стенда, и красный прогон означал бы «деплой не удался» уже после того, как код
+            // на стенде.
+            self::Test => [DeployStep::Test],
             self::Clone => [DeployStep::Clone],
             // Зависимости и фронт в копию не тащим (см. deployer.copy_excludes) — ставим заново.
             self::Copy => [DeployStep::Copy, DeployStep::Composer, DeployStep::Cache, DeployStep::Frontend],

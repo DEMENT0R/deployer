@@ -671,6 +671,13 @@ onUnmounted(() => {
                                 >
                                     Build frontend
                                 </SecondaryButton>
+                                <SecondaryButton
+                                    v-if="instance.has_test_command"
+                                    :disabled="isRunning"
+                                    @click="deploy('test')"
+                                >
+                                    Run tests
+                                </SecondaryButton>
                             </div>
                         </div>
 

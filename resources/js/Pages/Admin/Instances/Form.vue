@@ -49,6 +49,7 @@ const form = useForm({
     backup_command: source ? (source.backup_command ?? '') : props.default_backup_command,
     migrate_command: source?.migrate_command ?? 'php artisan migrate --force',
     frontend_command: source?.frontend_command ?? 'npm ci && npm run build',
+    test_command: source?.test_command ?? '',
     allowed_path_prefix: source?.allowed_path_prefix ?? '',
     screen_session: source?.screen_session ?? '',
     serve_port: source?.serve_port ?? '',
@@ -220,6 +221,23 @@ const toggleTester = (id) => {
                         <InputLabel for="frontend_command" value="Frontend command" />
                         <TextInput id="frontend_command" v-model="form.frontend_command" class="mt-1 block w-full" required />
                         <InputError class="mt-2" :message="form.errors.frontend_command" />
+                    </div>
+
+                    <div>
+                        <InputLabel for="test_command" value="Test command" />
+                        <TextInput id="test_command" v-model="form.test_command" class="mt-1 block w-full" />
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                            Runs the project's test suite on the <span class="font-mono">Run tests</span>
+                            button only — never as part of a deploy. Empty by default; the button appears
+                            once a command is set. <strong>Check the project's
+                            <span class="font-mono">phpunit.xml</span> first:</strong> if it does not
+                            override <span class="font-mono">DB_*</span> to its own database, a suite using
+                            <span class="font-mono">RefreshDatabase</span> wipes the stand's database.
+                            Usually <span class="font-mono">php artisan test</span>. Long suites are capped
+                            by <span class="font-mono">DEPLOYER_TEST_TIMEOUT</span>, not
+                            <span class="font-mono">DEPLOYER_TIMEOUT</span>.
+                        </p>
+                        <InputError class="mt-2" :message="form.errors.test_command" />
                     </div>
 
                     <div>

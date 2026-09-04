@@ -28,6 +28,7 @@ class Instance extends Model
         'backup_command',
         'migrate_command',
         'frontend_command',
+        'test_command',
         'allowed_path_prefix',
         'screen_session',
         'serve_port',

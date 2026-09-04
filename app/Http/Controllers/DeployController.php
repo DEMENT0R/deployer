@@ -33,6 +33,10 @@ class DeployController extends Controller
             return back()->withErrors(['deploy' => 'No backup command is set for this instance.']);
         }
 
+        if ($validated['action'] === DeployAction::Test->value && blank($instance->test_command)) {
+            return back()->withErrors(['deploy' => 'No test command is set for this instance.']);
+        }
+
         // Check and insert must be atomic, otherwise two clicks both pass the check
         // and the loser only finds out once its job hits the deploy lock.
         $lock = Cache::lock("deploy:create:{$instance->id}", 10);

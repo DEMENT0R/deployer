@@ -141,6 +141,7 @@ class InstanceController extends Controller
             'has_composer_command' => filled($instance->composer_command),
             'has_cache_command' => filled($instance->cache_command),
             'has_backup_command' => filled($instance->backup_command),
+            'has_test_command' => filled($instance->test_command),
             // Каталог дампов известен, только когда бэкап снимает наш скрипт: чужой команде
             // некуда заглядывать, и списка дампов у такого инстанса не будет.
             'can_clear_log' => $request->user()->can('deploy', $instance),
