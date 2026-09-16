@@ -9,7 +9,7 @@ use Tests\TestCase;
 
 class GitServiceTest extends TestCase
 {
-    public function test_stashes_local_changes_before_checkout(): void
+    public function test_replaces_old_stashes_with_local_changes_before_checkout(): void
     {
         $runner = $this->recordingRunner(status: " M app/Foo.php\n?? bar.txt\n");
 
@@ -18,6 +18,7 @@ class GitServiceTest extends TestCase
         $this->assertSame([
             ['git', 'fetch', '--all'],
             ['git', 'status', '--porcelain'],
+            ['git', 'stash', 'clear'],
             ['git', 'stash', 'push', '--include-untracked'],
             ['git', 'checkout', 'feature/x'],
             ['git', 'pull', 'origin', 'feature/x'],

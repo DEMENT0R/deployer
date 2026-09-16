@@ -137,7 +137,9 @@ class GitService
 
     /**
      * Локальные изменения в целевом проекте валят checkout/pull. Прячем их в stash,
-     * а не сбрасываем: изменения остаются доступны через `git stash list` в проекте.
+     * а не сбрасываем: последнюю пачку ещё можно вернуть `git stash pop`, если на стенде
+     * всё-таки правили руками. Старые записи чистим: руками в инстансах не работают,
+     * и разбирать растущую стопку было бы некому.
      * Untracked включаем (они тоже мешают checkout), а вот ignored — нет: там лежат
      * .env, vendor, node_modules целевого проекта.
      */
@@ -148,8 +150,10 @@ class GitService
         }
 
         if ($onOutput) {
-            $onOutput("\n[deployer] Обнаружены локальные изменения, прячем в stash.\n");
+            $onOutput("\n[deployer] Обнаружены локальные изменения, прячем в stash (старые записи stash удаляются).\n");
         }
+
+        $this->runner->runOrFail(['git', 'stash', 'clear'], $cwd, $onOutput);
 
         $this->runner->runOrFail(
             ['git', 'stash', 'push', '--include-untracked', '--message', 'deployer auto-stash '.now()->toDateTimeString()],

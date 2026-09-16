@@ -30,13 +30,16 @@ Git-шаг — ровно это:
 
 ```
 git fetch --all
-git stash push --include-untracked --message "deployer auto-stash <время>"   # если рабочее дерево грязное
+git stash clear                                                             # если рабочее дерево грязное
+git stash push --include-untracked --message "deployer auto-stash <время>"   # тоже
 git checkout <ветка>
 git pull <remote> <ветка>
 ```
 
 Stash делается только при непустом `git status --porcelain` и отключается через `DEPLOYER_AUTO_STASH=false`.
-Изменения не теряются — лежат в `git stash list` целевого проекта, забрать можно `git stash pop`.
+Перед новым stash старые записи удаляются: руками в инстансах не работают, и разбирать стопку некому.
+Остаётся только последняя пачка изменений — до следующего деплоя с грязным деревом её можно вернуть
+через `git stash pop`. Stash'и, сделанные в целевом проекте руками, удаляются тоже.
 Игнорируемые файлы (`.env`, `vendor`, `node_modules` целевого проекта) не трогаются.
 
 Список веток берётся из `git for-each-ref refs/remotes/<remote>/` и кэшируется на
@@ -129,7 +132,7 @@ php artisan queue:work --timeout=900
 | `DEPLOYER_TEST_TIMEOUT` | `900` | Таймаут шага тестов, секунды — отдельный от `DEPLOYER_TIMEOUT`, потому что сюит идёт дольше остальных шагов. Держите меньше `DEPLOYER_JOB_TIMEOUT` |
 | `DEPLOYER_BRANCH_CACHE_TTL` | `300` | TTL кэша списка веток, секунды |
 | `DEPLOYER_COPY_EXCLUDES` | `node_modules/,vendor/,bootstrap/cache/,storage/logs/,storage/framework/{cache,sessions,views}/` | Что не копировать при дубле файлов инстанса, через запятую. `.env` исключён всегда (копируется отдельно), `.git` копируется |
-| `DEPLOYER_AUTO_STASH` | `true` | Прятать локальные изменения целевого проекта в stash перед `git checkout` |
+| `DEPLOYER_AUTO_STASH` | `true` | Прятать локальные изменения целевого проекта в stash перед `git checkout`; старые записи stash при этом удаляются |
 | `DEPLOYER_JOB_TIMEOUT` | `900` | Таймаут джобы, секунды (он же TTL лока деплоя) |
 | `DEPLOYER_GIT_USERPROFILE` | — | Каталог профиля, подставляемый как `USERPROFILE`/`HOME` для git-подпроцессов |
 | `DEPLOYER_GIT_TERMINAL_PROMPT` | `0` | `GIT_TERMINAL_PROMPT` для подпроцессов |
@@ -606,8 +609,6 @@ composer test
 
 - Прогресс доставляется поллингом, без websockets/SSE; вывод дописывается в колонку `deployments.output`
   на каждый чанк, поэтому «болтливые» команды дают много записей в БД.
-- Грязное рабочее дерево уходит в stash автоматически, но стопка stash'ей в целевом проекте
-  никогда не разбирается — панель показывает счётчик, разбирает его по-прежнему человек.
 - Health-пинг — это один синхронный `GET` по URL инстанса без ретраев: он говорит «отвечает / не отвечает»,
   а не «работает правильно». Адрес задаёт только админ, схема ограничена `http`/`https`.
 - `Cancel` и автоматическая пометка брошенного деплоя правят только запись в БД. Убить сам процесс на хосте
