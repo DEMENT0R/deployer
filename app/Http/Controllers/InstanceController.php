@@ -128,7 +128,8 @@ class InstanceController extends Controller
             'default_branch' => $instance->default_branch,
             'hold' => $instance->holdSummary(),
             'latest_deployment' => $latest ? $this->formatDeployment($latest) : null,
-            'can_clear_log' => $request->user()->can('deploy', $instance),
+            // Чистка логов и Git gc с карточки — тем, кто может деплоить.
+            'can_deploy' => $request->user()->can('deploy', $instance),
         ];
     }
 

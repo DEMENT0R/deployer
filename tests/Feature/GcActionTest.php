@@ -49,6 +49,17 @@ class GcActionTest extends TestCase
         Queue::assertNothingPushed();
     }
 
+    public function test_the_card_knows_its_buttons_are_allowed(): void
+    {
+        $tester = User::factory()->create(['role' => UserRole::Tester]);
+        $instance = Instance::factory()->create();
+        $instance->users()->attach($tester);
+
+        $this->actingAs($tester)
+            ->get(route('instances.index'))
+            ->assertInertia(fn ($page) => $page->where('instances.0.can_deploy', true));
+    }
+
     /** gc только по кнопке: в цепочке деплоя он удлинял бы каждый запуск на минуты. */
     public function test_gc_runs_only_on_its_own(): void
     {

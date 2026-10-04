@@ -1,7 +1,7 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import DeployStatusBadge from '@/Components/DeployStatusBadge.vue';
-import { Head, Link, router } from '@inertiajs/vue3';
+import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import axios from 'axios';
 import { computed, onMounted, reactive } from 'vue';
 
@@ -82,6 +82,38 @@ const clearLogs = async (instance) => {
     } finally {
         clearingLogs[instance.id] = false;
     }
+};
+
+const page = usePage();
+
+// id инстанса → идёт ли постановка gc в очередь и чем она кончилась отказом. Ошибки деплоя
+// приходят общим ключом deploy, поэтому привязываем их к карточке, с которой нажали.
+const gcPending = reactive({});
+const gcErrors = reactive({});
+
+const isBusy = (instance) => ['pending', 'running'].includes(instance.latest_deployment?.status);
+
+const runGc = (instance) => {
+    if (
+        instance.hold &&
+        instance.hold.user_id !== page.props.auth.user?.id &&
+        !confirm(`${instance.hold.user} is testing on ${instance.name} until ${formatMoment(instance.hold.until)}. Run git gc anyway?`)
+    ) {
+        return;
+    }
+
+    gcErrors[instance.id] = '';
+
+    router.post(
+        route('instances.deploy', instance.id),
+        { action: 'gc' },
+        {
+            preserveScroll: true,
+            onStart: () => (gcPending[instance.id] = true),
+            onFinish: () => (gcPending[instance.id] = false),
+            onError: (errors) => (gcErrors[instance.id] = errors.deploy ?? Object.values(errors)[0]),
+        },
+    );
 };
 
 const sumAreas = (usage, areas) => areas.reduce((sum, { key }) => sum + (usage?.[key]?.bytes ?? 0), 0);
@@ -207,7 +239,7 @@ onMounted(() => {
                                     >
                                         <span v-if="disk[instance.id][area.key].partial">≥ </span>{{ formatSize(disk[instance.id][area.key].bytes) }}
                                         <button
-                                            v-if="area.key === 'logs' && instance.can_clear_log && disk[instance.id].logs.bytes > 0"
+                                            v-if="area.key === 'logs' && instance.can_deploy && disk[instance.id].logs.bytes > 0"
                                             type="button"
                                             class="ml-1 font-medium text-red-600 hover:text-red-800 disabled:cursor-wait disabled:opacity-50 dark:text-red-400 dark:hover:text-red-300"
                                             :disabled="clearingLogs[instance.id]"
@@ -247,7 +279,7 @@ onMounted(() => {
                                     </dd>
                                 </div>
                             </dl>
-                            <div v-if="disk && disk[instance.id]" class="mt-2">
+                            <div v-if="disk && disk[instance.id]" class="mt-2 flex flex-wrap gap-x-3 gap-y-1">
                                 <button
                                     type="button"
                                     class="text-xs font-medium text-indigo-600 hover:text-indigo-800 disabled:cursor-wait disabled:opacity-50 dark:text-indigo-400 dark:hover:text-indigo-300"
@@ -258,11 +290,24 @@ onMounted(() => {
                                     <template v-else-if="dependencies[instance.id]?.data">Recount vendor, node_modules and .git</template>
                                     <template v-else>Count vendor, node_modules and .git</template>
                                 </button>
+                                <button
+                                    v-if="instance.can_deploy"
+                                    type="button"
+                                    class="text-xs font-medium text-indigo-600 hover:text-indigo-800 disabled:cursor-not-allowed disabled:opacity-50 dark:text-indigo-400 dark:hover:text-indigo-300"
+                                    :disabled="gcPending[instance.id] || isBusy(instance)"
+                                    :title="isBusy(instance) ? 'A deployment is in progress on this instance' : 'Pack .git of this stand (runs through the queue, log on the instance page)'"
+                                    @click="runGc(instance)"
+                                >
+                                    Git gc
+                                </button>
                                 <p
                                     v-if="dependencies[instance.id]?.error"
-                                    class="mt-1 text-red-600 dark:text-red-400"
+                                    class="w-full text-red-600 dark:text-red-400"
                                 >
                                     {{ dependencies[instance.id].error }}
+                                </p>
+                                <p v-if="gcErrors[instance.id]" class="w-full text-red-600 dark:text-red-400">
+                                    {{ gcErrors[instance.id] }}
                                 </p>
                             </div>
                         </div>
