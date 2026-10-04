@@ -92,6 +92,47 @@ class InstanceDiskTest extends TestCase
         $this->assertSame(10, $disk[$instance->id]['logs']['bytes']);
     }
 
+    public function test_vendor_and_node_modules_are_counted_on_request(): void
+    {
+        $this->base = sys_get_temp_dir().'/deployer-disk-'.uniqid();
+        $this->writeFile($this->base.'/vendor/autoload.php', 40);
+        $this->writeFile($this->base.'/vendor/laravel/framework/src/App.php', 60);
+        config(['deployer.allowed_path_prefixes' => [$this->base]]);
+
+        $instance = Instance::factory()->create(['path' => $this->base, 'allowed_path_prefix' => $this->base]);
+        $tester = User::factory()->create(['role' => UserRole::Tester]);
+        $instance->users()->attach($tester);
+
+        $this->actingAs($tester)
+            ->getJson(route('instances.disk.dependencies', $instance))
+            ->assertOk()
+            ->assertExactJson([
+                'vendor' => ['bytes' => 100, 'files' => 2, 'partial' => false],
+                'node_modules' => null,
+            ]);
+    }
+
+    public function test_dependencies_of_an_unreadable_instance_are_an_error(): void
+    {
+        $admin = User::factory()->create(['role' => UserRole::Admin]);
+        $instance = Instance::factory()->create(['path' => '/var/www/does-not-exist']);
+
+        $this->actingAs($admin)
+            ->getJson(route('instances.disk.dependencies', $instance))
+            ->assertUnprocessable()
+            ->assertJsonStructure(['message']);
+    }
+
+    public function test_a_tester_without_access_cannot_count_dependencies(): void
+    {
+        $instance = Instance::factory()->create(['path' => '/var/www/does-not-exist']);
+        $stranger = User::factory()->create(['role' => UserRole::Tester]);
+
+        $this->actingAs($stranger)
+            ->getJson(route('instances.disk.dependencies', $instance))
+            ->assertForbidden();
+    }
+
     private function disk(User $user): array
     {
         return $this->actingAs($user)

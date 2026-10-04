@@ -2,7 +2,8 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import DeployStatusBadge from '@/Components/DeployStatusBadge.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
-import { computed, onMounted } from 'vue';
+import axios from 'axios';
+import { computed, onMounted, reactive } from 'vue';
 
 const props = defineProps({
     instances: {
@@ -35,11 +36,35 @@ const formatSize = (bytes) => {
     return `${(bytes / 1024 ** 3).toFixed(2)} GB`;
 };
 
-const instanceTotal = (usage) =>
-    diskAreas.reduce((sum, { key }) => sum + (usage?.[key]?.bytes ?? 0), 0);
+const dependencyAreas = [
+    { key: 'vendor', label: 'vendor' },
+    { key: 'node_modules', label: 'node_modules' },
+];
+
+// id инстанса → { loading, error, data }. vendor и node_modules считаются только по кнопке:
+// обход занимает секунды, а нужен редко.
+const dependencies = reactive({});
+
+const loadDependencies = async (id) => {
+    dependencies[id] = { loading: true, error: '', data: dependencies[id]?.data ?? null };
+
+    try {
+        const { data } = await axios.get(route('instances.disk.dependencies', id));
+        dependencies[id].data = data;
+    } catch (error) {
+        dependencies[id].error = error.response?.data?.message ?? 'Failed to count dependencies.';
+    } finally {
+        dependencies[id].loading = false;
+    }
+};
+
+const sumAreas = (usage, areas) => areas.reduce((sum, { key }) => sum + (usage?.[key]?.bytes ?? 0), 0);
+
+const instanceTotal = (id) =>
+    sumAreas(props.disk?.[id], diskAreas) + sumAreas(dependencies[id]?.data, dependencyAreas);
 
 const grandTotal = computed(() =>
-    props.disk ? Object.values(props.disk).reduce((sum, usage) => sum + instanceTotal(usage), 0) : null,
+    props.disk ? Object.keys(props.disk).reduce((sum, id) => sum + instanceTotal(id), 0) : null,
 );
 
 const formatMoment = (value) =>
@@ -65,7 +90,7 @@ onMounted(() => {
                 <span
                     v-if="grandTotal !== null && instances.length > 0"
                     class="text-sm text-gray-500 dark:text-gray-400"
-                    title="Logs, caches, uploads and DB dumps of all listed instances (vendor and node_modules not counted)"
+                    title="Logs, caches, uploads and DB dumps of all listed instances; vendor and node_modules only where counted"
                 >
                     Disk: {{ formatSize(grandTotal) }}
                 </span>
@@ -148,13 +173,48 @@ onMounted(() => {
                                     </dd>
                                     <dd v-else class="text-gray-300 dark:text-gray-600">—</dd>
                                 </div>
+                                <template v-if="dependencies[instance.id]?.data">
+                                    <div
+                                        v-for="area in dependencyAreas"
+                                        :key="area.key"
+                                        class="flex justify-between gap-2"
+                                    >
+                                        <dt class="truncate text-gray-400 dark:text-gray-500">{{ area.label }}</dt>
+                                        <dd
+                                            v-if="dependencies[instance.id].data[area.key]"
+                                            class="whitespace-nowrap text-gray-700 dark:text-gray-300"
+                                            :title="`${dependencies[instance.id].data[area.key].files} files${dependencies[instance.id].data[area.key].partial ? ', counting stopped early' : ''}`"
+                                        >
+                                            <span v-if="dependencies[instance.id].data[area.key].partial">≥ </span>{{ formatSize(dependencies[instance.id].data[area.key].bytes) }}
+                                        </dd>
+                                        <dd v-else class="text-gray-300 dark:text-gray-600">—</dd>
+                                    </div>
+                                </template>
                                 <div class="col-span-2 flex justify-between gap-2 font-medium">
                                     <dt class="text-gray-500 dark:text-gray-400">Total</dt>
                                     <dd class="text-gray-900 dark:text-gray-100">
-                                        {{ formatSize(instanceTotal(disk[instance.id])) }}
+                                        {{ formatSize(instanceTotal(instance.id)) }}
                                     </dd>
                                 </div>
                             </dl>
+                            <div v-if="disk && disk[instance.id]" class="mt-2">
+                                <button
+                                    type="button"
+                                    class="text-xs font-medium text-indigo-600 hover:text-indigo-800 disabled:cursor-wait disabled:opacity-50 dark:text-indigo-400 dark:hover:text-indigo-300"
+                                    :disabled="dependencies[instance.id]?.loading"
+                                    @click="loadDependencies(instance.id)"
+                                >
+                                    <template v-if="dependencies[instance.id]?.loading">Counting vendor and node_modules…</template>
+                                    <template v-else-if="dependencies[instance.id]?.data">Recount vendor and node_modules</template>
+                                    <template v-else>Count vendor and node_modules</template>
+                                </button>
+                                <p
+                                    v-if="dependencies[instance.id]?.error"
+                                    class="mt-1 text-red-600 dark:text-red-400"
+                                >
+                                    {{ dependencies[instance.id].error }}
+                                </p>
+                            </div>
                         </div>
                         <div class="mt-3 space-y-1">
                             <a

@@ -12,6 +12,7 @@ use App\Http\Controllers\DeployController;
 use App\Http\Controllers\DeploymentController;
 use App\Http\Controllers\InstanceBackupController;
 use App\Http\Controllers\InstanceController;
+use App\Http\Controllers\InstanceDiskController;
 use App\Http\Controllers\InstanceHealthController;
 use App\Http\Controllers\InstanceHoldController;
 use App\Http\Controllers\InstanceLogController;
@@ -43,6 +44,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/instances/{instance}/backups', [InstanceBackupController::class, 'index'])
         ->middleware('throttle:30,1')
         ->name('instances.backups.index');
+    Route::get('/instances/{instance}/disk/dependencies', [InstanceDiskController::class, 'dependencies'])
+        ->middleware('throttle:10,1')
+        ->name('instances.disk.dependencies');
     Route::get('/instances/{instance}/log', [InstanceLogController::class, 'show'])
         ->middleware('throttle:60,1')
         ->name('instances.log.show');
