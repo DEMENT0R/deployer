@@ -2,9 +2,9 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import DeployStatusBadge from '@/Components/DeployStatusBadge.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
-import { onMounted } from 'vue';
+import { computed, onMounted } from 'vue';
 
-defineProps({
+const props = defineProps({
     instances: {
         type: Array,
         required: true,
@@ -14,7 +14,33 @@ defineProps({
         type: Object,
         default: null,
     },
+    // id инстанса → размеры логов, кэшей, загрузок и дампов. Тоже отложенный, своей группой.
+    disk: {
+        type: Object,
+        default: null,
+    },
 });
+
+const diskAreas = [
+    { key: 'logs', label: 'Logs' },
+    { key: 'cache', label: 'Cache' },
+    { key: 'uploads', label: 'Uploads' },
+    { key: 'backups', label: 'Backups' },
+];
+
+const formatSize = (bytes) => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 ** 2) return `${Math.round(bytes / 1024)} KB`;
+    if (bytes < 1024 ** 3) return `${(bytes / 1024 ** 2).toFixed(1)} MB`;
+    return `${(bytes / 1024 ** 3).toFixed(2)} GB`;
+};
+
+const instanceTotal = (usage) =>
+    diskAreas.reduce((sum, { key }) => sum + (usage?.[key]?.bytes ?? 0), 0);
+
+const grandTotal = computed(() =>
+    props.disk ? Object.values(props.disk).reduce((sum, usage) => sum + instanceTotal(usage), 0) : null,
+);
 
 const formatMoment = (value) =>
     new Date(value).toLocaleString(undefined, {
@@ -32,9 +58,18 @@ onMounted(() => {
 
     <AuthenticatedLayout>
         <template #header>
-            <h2 class="text-xl font-semibold leading-tight text-gray-800 dark:text-gray-200">
-                Instances
-            </h2>
+            <div class="flex items-baseline justify-between gap-4">
+                <h2 class="text-xl font-semibold leading-tight text-gray-800 dark:text-gray-200">
+                    Instances
+                </h2>
+                <span
+                    v-if="grandTotal !== null && instances.length > 0"
+                    class="text-sm text-gray-500 dark:text-gray-400"
+                    title="Logs, caches, uploads and DB dumps of all listed instances (vendor and node_modules not counted)"
+                >
+                    Disk: {{ formatSize(grandTotal) }}
+                </span>
+            </div>
         </template>
 
         <div class="py-12">
@@ -87,6 +122,39 @@ onMounted(() => {
                                 <span v-if="!databases" class="text-gray-300 dark:text-gray-600">…</span>
                                 <span v-else>{{ databases[instance.id] ?? 'unknown' }}</span>
                             </p>
+                        </div>
+                        <div class="mt-3 border-t border-gray-100 pt-3 text-xs dark:border-gray-700">
+                            <p v-if="!disk" class="text-gray-300 dark:text-gray-600">Disk usage…</p>
+                            <p v-else-if="!disk[instance.id]" class="text-gray-400 dark:text-gray-500">
+                                Disk usage unknown: instance path is not readable.
+                            </p>
+                            <dl v-else class="grid grid-cols-2 gap-x-4 gap-y-1">
+                                <div
+                                    v-for="area in diskAreas"
+                                    :key="area.key"
+                                    class="flex justify-between gap-2"
+                                >
+                                    <dt class="text-gray-400 dark:text-gray-500">{{ area.label }}</dt>
+                                    <dd
+                                        v-if="disk[instance.id][area.key]"
+                                        class="text-gray-700 dark:text-gray-300"
+                                        :title="`${disk[instance.id][area.key].files} files${disk[instance.id][area.key].partial ? ', counting stopped early' : ''}`"
+                                    >
+                                        <span v-if="disk[instance.id][area.key].partial">≥ </span>{{ formatSize(disk[instance.id][area.key].bytes) }}
+                                        <span
+                                            v-if="area.key === 'backups'"
+                                            class="text-gray-400 dark:text-gray-500"
+                                        >({{ disk[instance.id][area.key].files }})</span>
+                                    </dd>
+                                    <dd v-else class="text-gray-300 dark:text-gray-600">—</dd>
+                                </div>
+                                <div class="col-span-2 flex justify-between gap-2 font-medium">
+                                    <dt class="text-gray-500 dark:text-gray-400">Total</dt>
+                                    <dd class="text-gray-900 dark:text-gray-100">
+                                        {{ formatSize(instanceTotal(disk[instance.id])) }}
+                                    </dd>
+                                </div>
+                            </dl>
                         </div>
                         <div class="mt-3 space-y-1">
                             <a

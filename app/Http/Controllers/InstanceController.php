@@ -7,6 +7,7 @@ use App\Models\Deployment;
 use App\Models\Instance;
 use App\Services\Deploy\GitBranchResolver;
 use App\Services\InstanceBackupService;
+use App\Services\InstanceDiskService;
 use App\Services\InstanceEnvService;
 use App\Services\InstanceStatusService;
 use Illuminate\Http\Request;
@@ -20,7 +21,7 @@ class InstanceController extends Controller
     /** Сколько последних деплоев показывать в истории на странице инстанса. */
     private const HISTORY_LIMIT = 20;
 
-    public function index(Request $request, InstanceEnvService $envService): Response
+    public function index(Request $request, InstanceEnvService $envService, InstanceDiskService $disk): Response
     {
         $this->authorize('viewAny', Instance::class);
 
@@ -37,6 +38,11 @@ class InstanceController extends Controller
             'databases' => Inertia::defer(fn () => $instances->mapWithKeys(
                 fn (Instance $instance) => [$instance->id => $envService->databaseName($instance)]
             )),
+            // Обход storage и каталога дампов — самое медленное на странице. Своя группа,
+            // чтобы имена БД не ждали подсчёта размеров.
+            'disk' => Inertia::defer(fn () => $instances->mapWithKeys(
+                fn (Instance $instance) => [$instance->id => $disk->usage($instance)]
+            ), 'disk'),
         ]);
     }
 
