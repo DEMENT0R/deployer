@@ -6,6 +6,7 @@ use App\Enums\UserRole;
 use App\Models\User;
 use App\Support\Changelog;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Inertia\Testing\AssertableInertia;
 use Tests\TestCase;
 
@@ -45,6 +46,19 @@ class ChangelogTest extends TestCase
         $this->actingAs($user)
             ->get(route('instances.index'))
             ->assertInertia(fn (AssertableInertia $page) => $page->where('hasUnseenChangelog', true));
+
+        $this->actingAs($user)->get(route('changelog.index'))->assertOk();
+
+        $this->actingAs($user)
+            ->get(route('instances.index'))
+            ->assertInertia(fn (AssertableInertia $page) => $page->where('hasUnseenChangelog', false));
+    }
+
+    /** Секция подписана местной датой автора, которая по UTC ещё не наступила. */
+    public function test_a_section_dated_ahead_of_utc_is_seen_after_a_visit(): void
+    {
+        $user = User::factory()->create(['role' => UserRole::Admin]);
+        $this->travelTo(Carbon::parse(Changelog::latestDate())->subHours(8));
 
         $this->actingAs($user)->get(route('changelog.index'))->assertOk();
 
