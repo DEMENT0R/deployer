@@ -15,4 +15,5 @@ enum DeployStep: string
     case Migrate = 'migrate';
     case Frontend = 'frontend';
     case Test = 'test';
+    case Gc = 'gc';
 }

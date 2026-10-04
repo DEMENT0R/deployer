@@ -188,6 +188,26 @@ class GitService
         return $this->nonEmptyLines($result->output);
     }
 
+    /**
+     * Упаковка репозитория стенда. Без --aggressive и --prune=now: умолчания git не трогают
+     * недостижимые объекты моложе двух недель — среди них stash'и, вычищенные автостэшем,
+     * и их ещё можно достать по reflog. Размер до и после — чтобы в логе было видно, ради
+     * чего всё.
+     */
+    public function gc(string $cwd, ?Closure $onOutput = null): void
+    {
+        $say = $onOutput ?? static fn (string $chunk) => null;
+
+        $say("[deployer] Before:\n");
+        $this->runner->runOrFail(['git', 'count-objects', '-vH'], $cwd, $onOutput);
+
+        $say("\n[deployer] git gc\n");
+        $this->runner->runOrFail(['git', 'gc'], $cwd, $onOutput);
+
+        $say("\n[deployer] After:\n");
+        $this->runner->runOrFail(['git', 'count-objects', '-vH'], $cwd, $onOutput);
+    }
+
     public function fetchAll(string $cwd, ?Closure $onOutput = null): void
     {
         $this->runner->runOrFail(['git', 'fetch', '--all'], $cwd, $onOutput);

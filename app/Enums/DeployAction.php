@@ -13,6 +13,7 @@ enum DeployAction: string
     case Migrate = 'migrate';
     case Frontend = 'frontend';
     case Test = 'test';
+    case Gc = 'gc';
     case Clone = 'clone';
     case Copy = 'copy';
     case Rollback = 'rollback';
@@ -21,7 +22,7 @@ enum DeployAction: string
     {
         return match ($this) {
             self::Full, self::Branch => true,
-            self::Backup, self::Restore, self::Composer, self::Cache, self::Migrate, self::Frontend, self::Test, self::Clone, self::Copy, self::Rollback => false,
+            self::Backup, self::Restore, self::Composer, self::Cache, self::Migrate, self::Frontend, self::Test, self::Gc, self::Clone, self::Copy, self::Rollback => false,
         };
     }
 
@@ -43,6 +44,7 @@ enum DeployAction: string
             self::Migrate->value,
             self::Frontend->value,
             self::Test->value,
+            self::Gc->value,
         ];
     }
 
@@ -68,6 +70,9 @@ enum DeployAction: string
             // стенда, и красный прогон означал бы «деплой не удался» уже после того, как код
             // на стенде.
             self::Test => [DeployStep::Test],
+            // Через очередь, а не прямым вызовом: на большом репозитории gc идёт минутами,
+            // а пока он пакует объекты, git-шаг деплоя споткнулся бы о его lock-файлы.
+            self::Gc => [DeployStep::Gc],
             self::Clone => [DeployStep::Clone],
             // Зависимости и фронт в копию не тащим (см. deployer.copy_excludes) — ставим заново.
             self::Copy => [DeployStep::Copy, DeployStep::Composer, DeployStep::Cache, DeployStep::Frontend],

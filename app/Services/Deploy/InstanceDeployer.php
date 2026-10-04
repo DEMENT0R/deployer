@@ -76,6 +76,7 @@ class InstanceDeployer
                         DeployStep::Migrate => $this->runMigrate($instance, $cwd, $onOutput),
                         DeployStep::Frontend => $this->runFrontend($instance, $cwd, $onOutput),
                         DeployStep::Test => $this->runTest($instance, $cwd, $onOutput),
+                        DeployStep::Gc => $this->gitService->gc($cwd, $onOutput),
                     };
                 });
             }

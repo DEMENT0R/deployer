@@ -678,6 +678,13 @@ onUnmounted(() => {
                                 >
                                     Run tests
                                 </SecondaryButton>
+                                <SecondaryButton
+                                    :disabled="isRunning"
+                                    title="Pack the stand's .git: git gc with git's own safe defaults"
+                                    @click="deploy('gc')"
+                                >
+                                    Git gc
+                                </SecondaryButton>
                             </div>
                         </div>
 

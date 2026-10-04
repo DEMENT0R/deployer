@@ -22,6 +22,7 @@ const stepOrder = [
     'migrate',
     'frontend',
     'test',
+    'gc',
 ];
 
 const stepLabels = {
@@ -36,6 +37,7 @@ const stepLabels = {
     migrate: 'Migrate',
     frontend: 'Frontend',
     test: 'Tests',
+    gc: 'Git gc',
 };
 
 const visibleSteps = () =>

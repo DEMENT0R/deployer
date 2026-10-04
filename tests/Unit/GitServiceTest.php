@@ -54,6 +54,20 @@ class GitServiceTest extends TestCase
         ], $this->normalize($runner->commands));
     }
 
+    /** Только умолчания git: --prune=now снёс бы и недавно вычищенные stash'и. */
+    public function test_gc_measures_before_and_after_with_safe_defaults(): void
+    {
+        $runner = $this->recordingRunner(status: '');
+
+        (new GitService($runner))->gc('/tmp/project');
+
+        $this->assertSame([
+            ['git', 'count-objects', '-vH'],
+            ['git', 'gc'],
+            ['git', 'count-objects', '-vH'],
+        ], $runner->commands);
+    }
+
     public function test_head_commit_is_split_on_the_field_separator(): void
     {
         $runner = $this->scriptedRunner([
