@@ -6,6 +6,7 @@ use App\Enums\DeployStatus;
 use App\Models\Deployment;
 use App\Notifications\DeploymentFinished;
 use App\Services\Deploy\InstanceDeployer;
+use App\Services\DeploymentPruner;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Cache;
@@ -59,6 +60,20 @@ class DeployInstanceJob implements ShouldQueue
         }
 
         $this->notifyInitiator($deployment);
+        $this->prune();
+    }
+
+    /**
+     * Старые логи деплоев чистим здесь, а не по расписанию: на сервере панели может не быть
+     * cron со schedule:run, а деплои идут постоянно. Один UPDATE — деплою это ничего не стоит.
+     */
+    private function prune(): void
+    {
+        try {
+            app(DeploymentPruner::class)->prune();
+        } catch (Throwable $e) {
+            report($e);
+        }
     }
 
     /**
