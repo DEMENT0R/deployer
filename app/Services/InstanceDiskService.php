@@ -9,7 +9,7 @@ use App\Services\Deploy\PathValidator;
 /**
  * Сколько места занимает то, что копится на стенде само: логи, кэши, загрузки и дампы.
  *
- * vendor и node_modules в usage() не входят: это десятки тысяч файлов, обход которых на каждом
+ * vendor, node_modules и .git в usage() не входят: это десятки тысяч файлов, обход которых на каждом
  * открытии списка инстансов стоил бы секунды, а места они не «набирают» — их размер
  * меняется только вместе с зависимостями. Их считает dependencies(), по явному запросу.
  */
@@ -31,7 +31,11 @@ class InstanceDiskService
     /** node_modules легко переваливает за сотню тысяч файлов; сюда ходят по кнопке, можно дольше. */
     private const MAX_DEPENDENCY_FILES = 400000;
 
-    private const DEPENDENCIES = ['vendor', 'node_modules'];
+    /**
+     * .git — сюда же: у долгоживущего стенда он бывает больше vendor (паки, reflog, stash'и),
+     * а обходить его так же дорого.
+     */
+    private const DEPENDENCIES = ['vendor', 'node_modules', '.git'];
 
     public function __construct(
         private readonly PathValidator $pathValidator,

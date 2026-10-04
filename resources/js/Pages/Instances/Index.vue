@@ -47,9 +47,10 @@ const formatSize = (bytes) => {
 const dependencyAreas = [
     { key: 'vendor', label: 'vendor' },
     { key: 'node_modules', label: 'node_modules' },
+    { key: '.git', label: '.git' },
 ];
 
-// id инстанса → { loading, error, data }. vendor и node_modules считаются только по кнопке:
+// id инстанса → { loading, error, data }. vendor, node_modules и .git считаются только по кнопке:
 // обход занимает секунды, а нужен редко.
 const dependencies = reactive({});
 
@@ -116,7 +117,7 @@ onMounted(() => {
                     <span
                         v-if="grandTotal !== null && instances.length > 0"
                         class="text-gray-500 dark:text-gray-400"
-                        title="Logs, caches, uploads and DB dumps of all listed instances; vendor and node_modules only where counted"
+                        title="Logs, caches, uploads and DB dumps of all listed instances; vendor, node_modules and .git only where counted"
                     >
                         Disk: {{ formatSize(grandTotal) }}
                     </span>
@@ -253,9 +254,9 @@ onMounted(() => {
                                     :disabled="dependencies[instance.id]?.loading"
                                     @click="loadDependencies(instance.id)"
                                 >
-                                    <template v-if="dependencies[instance.id]?.loading">Counting vendor and node_modules…</template>
-                                    <template v-else-if="dependencies[instance.id]?.data">Recount vendor and node_modules</template>
-                                    <template v-else>Count vendor and node_modules</template>
+                                    <template v-if="dependencies[instance.id]?.loading">Counting vendor, node_modules and .git…</template>
+                                    <template v-else-if="dependencies[instance.id]?.data">Recount vendor, node_modules and .git</template>
+                                    <template v-else>Count vendor, node_modules and .git</template>
                                 </button>
                                 <p
                                     v-if="dependencies[instance.id]?.error"

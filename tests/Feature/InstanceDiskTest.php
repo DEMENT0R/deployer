@@ -121,11 +121,13 @@ class InstanceDiskTest extends TestCase
         $this->assertSame(10, $disk[$instance->id]['logs']['bytes']);
     }
 
-    public function test_vendor_and_node_modules_are_counted_on_request(): void
+    public function test_vendor_node_modules_and_git_are_counted_on_request(): void
     {
         $this->base = sys_get_temp_dir().'/deployer-disk-'.uniqid();
         $this->writeFile($this->base.'/vendor/autoload.php', 40);
         $this->writeFile($this->base.'/vendor/laravel/framework/src/App.php', 60);
+        $this->writeFile($this->base.'/.git/objects/pack/pack-1.pack', 300);
+        $this->writeFile($this->base.'/.git/HEAD', 21);
         config(['deployer.allowed_path_prefixes' => [$this->base]]);
 
         $instance = Instance::factory()->create(['path' => $this->base, 'allowed_path_prefix' => $this->base]);
@@ -138,6 +140,7 @@ class InstanceDiskTest extends TestCase
             ->assertExactJson([
                 'vendor' => ['bytes' => 100, 'files' => 2, 'partial' => false],
                 'node_modules' => null,
+                '.git' => ['bytes' => 321, 'files' => 2, 'partial' => false],
             ]);
     }
 
