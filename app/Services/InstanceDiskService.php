@@ -82,6 +82,68 @@ class InstanceDiskService
     }
 
     /**
+     * Свободное место на разделах, где лежат инстансы и их дампы. Точку монтирования PHP
+     * не сообщает, поэтому один раздел узнаём по совпадению объёма и остатка: два разных
+     * раздела с одинаковыми до байта цифрами на практике не встречаются.
+     *
+     * @param  iterable<Instance>  $instances
+     * @return list<array{path: string, free: int, total: int}>
+     */
+    public function volumes(iterable $instances): array
+    {
+        $paths = [];
+
+        foreach ($instances as $instance) {
+            try {
+                $paths[] = $this->pathValidator->resolve($instance);
+            } catch (PathValidationException) {
+                // Недоступный инстанс в итог не попадает — о нём и так говорит его карточка.
+            }
+
+            $backups = $this->backups->directory($instance);
+
+            if ($backups !== null) {
+                $paths[] = $this->existingAncestor($backups);
+            }
+        }
+
+        $volumes = [];
+
+        foreach (array_unique(array_filter($paths)) as $path) {
+            $free = @disk_free_space($path);
+            $total = @disk_total_space($path);
+
+            if ($free === false || $total === false) {
+                continue;
+            }
+
+            $volumes[(int) $total.':'.(int) $free] ??= [
+                'path' => str_replace('\\', '/', $path),
+                'free' => (int) $free,
+                'total' => (int) $total,
+            ];
+        }
+
+        return array_values($volumes);
+    }
+
+    /** Каталога дампов может ещё не быть — раздел определяем по ближайшему существующему предку. */
+    private function existingAncestor(string $path): ?string
+    {
+        while (! is_dir($path)) {
+            $parent = dirname($path);
+
+            if ($parent === $path) {
+                return null;
+            }
+
+            $path = $parent;
+        }
+
+        return $path;
+    }
+
+    /**
      * @param  list<string>  $directories
      * @return array{bytes: int, files: int, partial: bool}|null
      */

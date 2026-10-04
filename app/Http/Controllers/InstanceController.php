@@ -43,6 +43,7 @@ class InstanceController extends Controller
             'disk' => Inertia::defer(fn () => $instances->mapWithKeys(
                 fn (Instance $instance) => [$instance->id => $disk->usage($instance)]
             ), 'disk'),
+            'volumes' => Inertia::defer(fn () => $disk->volumes($instances), 'disk'),
         ]);
     }
 

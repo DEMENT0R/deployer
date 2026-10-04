@@ -34,7 +34,7 @@ class InstanceDiskTest extends TestCase
         $this->actingAs($admin)
             ->get(route('instances.index'))
             ->assertOk()
-            ->assertInertia(fn (AssertableInertia $page) => $page->missing('disk'));
+            ->assertInertia(fn (AssertableInertia $page) => $page->missing('disk')->missing('volumes'));
     }
 
     public function test_index_reports_logs_caches_uploads_and_dumps(): void
@@ -69,6 +69,35 @@ class InstanceDiskTest extends TestCase
         $this->assertSame(['bytes' => 50, 'files' => 1, 'partial' => false], $disk[$instance->id]['uploads']);
         $this->assertSame(['bytes' => 500, 'files' => 2, 'partial' => false], $disk[$instance->id]['backups']);
         $this->assertNull($disk[$missing->id]);
+    }
+
+    public function test_instances_on_one_partition_report_it_once(): void
+    {
+        $admin = User::factory()->create(['role' => UserRole::Admin]);
+
+        $this->base = sys_get_temp_dir().'/deployer-disk-'.uniqid();
+        File::ensureDirectoryExists($this->base.'/one');
+        File::ensureDirectoryExists($this->base.'/two');
+        config(['deployer.allowed_path_prefixes' => [$this->base]]);
+
+        foreach (['one', 'two'] as $name) {
+            Instance::factory()->create([
+                'path' => $this->base.'/'.$name,
+                'allowed_path_prefix' => $this->base,
+                // Каталога дампов ещё нет — раздел берётся по существующему предку.
+                'backup_command' => 'bash scripts/backup-db.sh --root='.$this->base.'/dumps',
+            ]);
+        }
+        Instance::factory()->create(['path' => '/var/www/does-not-exist']);
+
+        $volumes = $this->actingAs($admin)
+            ->get(route('instances.index'), $this->partialHeaders('volumes'))
+            ->assertOk()
+            ->json('props.volumes');
+
+        $this->assertCount(1, $volumes);
+        $this->assertGreaterThan(0, $volumes[0]['total']);
+        $this->assertLessThanOrEqual($volumes[0]['total'], $volumes[0]['free']);
     }
 
     public function test_dumps_are_unknown_when_backups_are_not_taken_by_our_script(): void
@@ -136,14 +165,20 @@ class InstanceDiskTest extends TestCase
     private function disk(User $user): array
     {
         return $this->actingAs($user)
-            ->get(route('instances.index'), [
-                'X-Inertia' => 'true',
-                'X-Inertia-Version' => (new HandleInertiaRequests)->version(request()) ?? '',
-                'X-Inertia-Partial-Component' => 'Instances/Index',
-                'X-Inertia-Partial-Data' => 'disk',
-            ])
+            ->get(route('instances.index'), $this->partialHeaders('disk'))
             ->assertOk()
             ->json('props.disk');
+    }
+
+    /** @return array<string, string> */
+    private function partialHeaders(string $prop): array
+    {
+        return [
+            'X-Inertia' => 'true',
+            'X-Inertia-Version' => (new HandleInertiaRequests)->version(request()) ?? '',
+            'X-Inertia-Partial-Component' => 'Instances/Index',
+            'X-Inertia-Partial-Data' => $prop,
+        ];
     }
 
     private function writeFile(string $path, int $bytes): void

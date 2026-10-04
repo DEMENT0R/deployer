@@ -20,7 +20,15 @@ const props = defineProps({
         type: Object,
         default: null,
     },
+    // Разделы, на которых лежат инстансы и дампы: свободно / всего. Та же отложенная группа.
+    volumes: {
+        type: Array,
+        default: null,
+    },
 });
+
+// Меньше десятой части раздела — пора чистить, пока деплой не упал посреди npm install.
+const isLow = (volume) => volume.total > 0 && volume.free / volume.total < 0.1;
 
 const diskAreas = [
     { key: 'logs', label: 'Logs' },
@@ -87,13 +95,27 @@ onMounted(() => {
                 <h2 class="text-xl font-semibold leading-tight text-gray-800 dark:text-gray-200">
                     Instances
                 </h2>
-                <span
-                    v-if="grandTotal !== null && instances.length > 0"
-                    class="text-sm text-gray-500 dark:text-gray-400"
-                    title="Logs, caches, uploads and DB dumps of all listed instances; vendor and node_modules only where counted"
-                >
-                    Disk: {{ formatSize(grandTotal) }}
-                </span>
+                <div class="flex flex-wrap items-baseline justify-end gap-x-4 gap-y-1 text-sm">
+                    <span
+                        v-if="grandTotal !== null && instances.length > 0"
+                        class="text-gray-500 dark:text-gray-400"
+                        title="Logs, caches, uploads and DB dumps of all listed instances; vendor and node_modules only where counted"
+                    >
+                        Disk: {{ formatSize(grandTotal) }}
+                    </span>
+                    <span
+                        v-for="volume in volumes ?? []"
+                        :key="volume.path"
+                        :class="
+                            isLow(volume)
+                                ? 'font-medium text-red-600 dark:text-red-400'
+                                : 'text-gray-500 dark:text-gray-400'
+                        "
+                        :title="`Partition of ${volume.path}`"
+                    >
+                        Free: {{ formatSize(volume.free) }} of {{ formatSize(volume.total) }}
+                    </span>
+                </div>
             </div>
         </template>
 
