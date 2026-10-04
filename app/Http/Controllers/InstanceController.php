@@ -32,7 +32,7 @@ class InstanceController extends Controller
             ->get();
 
         return Inertia::render('Instances/Index', [
-            'instances' => $instances->map(fn (Instance $instance) => $this->formatInstanceSummary($instance)),
+            'instances' => $instances->map(fn (Instance $instance) => $this->formatInstanceSummary($instance, $request)),
             // Имя БД лежит в .env целевого проекта: поход в файловую систему по каждому инстансу,
             // на недоступном пути ещё и небыстрый. Список карточек ждать этого не должен.
             'databases' => Inertia::defer(fn () => $instances->mapWithKeys(
@@ -115,7 +115,7 @@ class InstanceController extends Controller
     /**
      * @return array<string, mixed>
      */
-    private function formatInstanceSummary(Instance $instance): array
+    private function formatInstanceSummary(Instance $instance, Request $request): array
     {
         $latest = $instance->deployments->first();
 
@@ -128,6 +128,7 @@ class InstanceController extends Controller
             'default_branch' => $instance->default_branch,
             'hold' => $instance->holdSummary(),
             'latest_deployment' => $latest ? $this->formatDeployment($latest) : null,
+            'can_clear_log' => $request->user()->can('deploy', $instance),
         ];
     }
 

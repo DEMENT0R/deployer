@@ -20,6 +20,9 @@ class InstanceLogService
 
     private const CHUNK = 8192;
 
+    /** Через сколько секунд без записи лог считается закрытым и при чистке удаляется. */
+    private const STALE_AFTER = 86400;
+
     public function __construct(private readonly PathValidator $pathValidator) {}
 
     /**
@@ -57,20 +60,47 @@ class InstanceLogService
     }
 
     /**
-     * Обнуляем файл, а не удаляем: удалённый лог php-fpm продолжит писать в открытый дескриптор,
-     * и до перезапуска стенда новые записи будут уходить в никуда.
+     * Чистка логов стенда: не только того файла, что показываем, но и всех *.log рядом с ним —
+     * при канале daily растут именно ротированные laravel-<дата>.log, а не laravel.log.
+     *
+     * Свежие файлы обнуляем, а не удаляем: удалённый лог, открытый долгоживущим процессом
+     * (php-fpm, воркер очереди, artisan serve), продолжит писаться в дескриптор, и до перезапуска
+     * записи будут уходить в никуда. В файлы старше суток уже никто не пишет — их удаляем.
+     *
+     * @return array{emptied: int, deleted: int, freed: int}|null null — чистить было нечего
      *
      * @throws PathValidationException
      */
-    public function clear(Instance $instance): bool
+    public function clear(Instance $instance): ?array
     {
+        $base = $this->base($instance);
         $path = $this->path($instance);
+        $directory = dirname($path);
 
-        if (! is_file($path)) {
-            return false;
+        // Лог, вынесенный в корень проекта, — не повод сносить все *.log по корню.
+        $files = $directory === $base
+            ? array_filter([$path], 'is_file')
+            : (glob($directory.'/*.log') ?: []);
+
+        $result = ['emptied' => 0, 'deleted' => 0, 'freed' => 0];
+        $staleBefore = time() - self::STALE_AFTER;
+
+        foreach ($files as $file) {
+            if (! is_file($file)) {
+                continue;
+            }
+
+            $size = (int) filesize($file);
+            $stale = $file !== $path && (int) filemtime($file) < $staleBefore;
+            $done = $stale ? @unlink($file) : @file_put_contents($file, '') !== false;
+
+            if ($done) {
+                $result[$stale ? 'deleted' : 'emptied']++;
+                $result['freed'] += $size;
+            }
         }
 
-        return file_put_contents($path, '') !== false;
+        return $result['emptied'] + $result['deleted'] > 0 ? $result : null;
     }
 
     /**
@@ -78,10 +108,17 @@ class InstanceLogService
      */
     private function path(Instance $instance): string
     {
-        $base = $this->pathValidator->resolve($instance);
         $file = ltrim((string) config('deployer.log_file', 'storage/logs/laravel.log'), '/\\');
 
-        return rtrim(str_replace('\\', '/', $base), '/').'/'.$file;
+        return $this->base($instance).'/'.str_replace('\\', '/', $file);
+    }
+
+    /**
+     * @throws PathValidationException
+     */
+    private function base(Instance $instance): string
+    {
+        return rtrim(str_replace('\\', '/', $this->pathValidator->resolve($instance)), '/');
     }
 
     /**

@@ -66,6 +66,23 @@ const loadDependencies = async (id) => {
     }
 };
 
+const clearingLogs = reactive({});
+
+const clearLogs = async (instance) => {
+    if (!confirm(`Clear the logs of ${instance.name}? Files written within the last day are emptied, older ones are deleted.`)) return;
+
+    clearingLogs[instance.id] = true;
+
+    try {
+        await axios.delete(route('instances.log.destroy', instance.id));
+        router.reload({ only: ['disk', 'volumes'] });
+    } catch (error) {
+        alert(error.response?.data?.message ?? 'Failed to clear the logs.');
+    } finally {
+        clearingLogs[instance.id] = false;
+    }
+};
+
 const sumAreas = (usage, areas) => areas.reduce((sum, { key }) => sum + (usage?.[key]?.bytes ?? 0), 0);
 
 const instanceTotal = (id) =>
@@ -188,6 +205,16 @@ onMounted(() => {
                                         :title="`${disk[instance.id][area.key].files} files${disk[instance.id][area.key].partial ? ', counting stopped early' : ''}`"
                                     >
                                         <span v-if="disk[instance.id][area.key].partial">≥ </span>{{ formatSize(disk[instance.id][area.key].bytes) }}
+                                        <button
+                                            v-if="area.key === 'logs' && instance.can_clear_log && disk[instance.id].logs.bytes > 0"
+                                            type="button"
+                                            class="ml-1 font-medium text-red-600 hover:text-red-800 disabled:cursor-wait disabled:opacity-50 dark:text-red-400 dark:hover:text-red-300"
+                                            :disabled="clearingLogs[instance.id]"
+                                            title="Empty logs written within the last day, delete older ones"
+                                            @click="clearLogs(instance)"
+                                        >
+                                            clear
+                                        </button>
                                         <span
                                             v-if="area.key === 'backups'"
                                             class="text-gray-400 dark:text-gray-500"

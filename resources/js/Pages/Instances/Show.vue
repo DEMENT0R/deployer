@@ -269,7 +269,7 @@ const loadAppLog = async () => {
 };
 
 const clearAppLog = async () => {
-    if (!confirm('Empty the application log of this stand?')) return;
+    if (!confirm('Clear the logs of this stand? Files written within the last day are emptied, older ones are deleted.')) return;
 
     appLogLoading.value = true;
     appLogError.value = '';

@@ -32,12 +32,17 @@ class InstanceLogController extends Controller
             return response()->json(['message' => $exception->getMessage()], 422);
         }
 
-        if (! $cleared) {
-            return response()->json(['message' => 'The log file is missing or not writable.'], 422);
+        if ($cleared === null) {
+            return response()->json(['message' => 'There are no log files to clear, or they are not writable.'], 422);
         }
 
-        Audit::record('log.cleared', $instance->name, null, $instance);
+        Audit::record('log.cleared', $instance->name, sprintf(
+            'Emptied %d, deleted %d log file(s), %.1f MB freed',
+            $cleared['emptied'],
+            $cleared['deleted'],
+            $cleared['freed'] / 1048576,
+        ), $instance);
 
-        return response()->json($logs->tail($instance));
+        return response()->json($logs->tail($instance) + ['cleared' => $cleared]);
     }
 }

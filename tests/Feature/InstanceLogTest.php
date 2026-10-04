@@ -6,6 +6,7 @@ use App\Enums\UserRole;
 use App\Models\Instance;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\File;
 use Tests\TestCase;
 
 class InstanceLogTest extends TestCase
@@ -16,11 +17,8 @@ class InstanceLogTest extends TestCase
 
     protected function tearDown(): void
     {
-        if ($this->base !== null && is_dir($this->base)) {
-            @unlink($this->base.'/storage/logs/laravel.log');
-            @rmdir($this->base.'/storage/logs');
-            @rmdir($this->base.'/storage');
-            @rmdir($this->base);
+        if ($this->base !== null) {
+            File::deleteDirectory($this->base);
         }
 
         parent::tearDown();
@@ -77,6 +75,53 @@ class InstanceLogTest extends TestCase
 
         $this->assertFileExists($this->base.'/storage/logs/laravel.log');
         $this->assertSame('', file_get_contents($this->base.'/storage/logs/laravel.log'));
+    }
+
+    /** При канале daily растут ротированные файлы: старые удаляем, свежие — только обнуляем. */
+    public function test_clearing_sweeps_rotated_logs(): void
+    {
+        $instance = $this->instanceWithLog("boom\n");
+        $logs = $this->base.'/storage/logs';
+        file_put_contents($logs.'/laravel-2026-01-01.log', str_repeat('x', 1000));
+        touch($logs.'/laravel-2026-01-01.log', time() - 3 * 86400);
+        file_put_contents($logs.'/laravel-today.log', 'fresh');
+        file_put_contents($logs.'/notes.txt', 'keep');
+        $admin = User::factory()->create(['role' => UserRole::Admin]);
+
+        $this->actingAs($admin)
+            ->deleteJson(route('instances.log.destroy', $instance))
+            ->assertOk()
+            ->assertJson(['cleared' => ['emptied' => 2, 'deleted' => 1, 'freed' => 1010]]);
+
+        $this->assertFileDoesNotExist($logs.'/laravel-2026-01-01.log');
+        $this->assertSame('', file_get_contents($logs.'/laravel-today.log'));
+        $this->assertSame('', file_get_contents($logs.'/laravel.log'));
+        $this->assertSame('keep', file_get_contents($logs.'/notes.txt'));
+        $this->assertDatabaseHas('audit_logs', ['action' => 'log.cleared', 'instance_id' => $instance->id]);
+    }
+
+    /** Показываемый лог не удаляется, даже если в него давно не писали. */
+    public function test_the_configured_log_is_emptied_even_when_stale(): void
+    {
+        $instance = $this->instanceWithLog("old\n");
+        touch($this->base.'/storage/logs/laravel.log', time() - 3 * 86400);
+        $admin = User::factory()->create(['role' => UserRole::Admin]);
+
+        $this->actingAs($admin)
+            ->deleteJson(route('instances.log.destroy', $instance))
+            ->assertOk();
+
+        $this->assertFileExists($this->base.'/storage/logs/laravel.log');
+    }
+
+    public function test_clearing_without_logs_is_refused(): void
+    {
+        $instance = $this->instanceWithLog(null);
+        $admin = User::factory()->create(['role' => UserRole::Admin]);
+
+        $this->actingAs($admin)
+            ->deleteJson(route('instances.log.destroy', $instance))
+            ->assertUnprocessable();
     }
 
     public function test_a_tester_without_access_cannot_clear_the_log(): void
