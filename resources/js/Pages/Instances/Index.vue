@@ -33,11 +33,12 @@ const isLow = (volume) => volume.total > 0 && volume.free / volume.total < 0.1;
 const usedPercent = (volume) =>
     volume.total > 0 ? Math.round(((volume.total - volume.free) / volume.total) * 100) : 0;
 
+// Классы цвета пишутся целиком: Tailwind ищет их в исходнике как строки.
 const diskAreas = [
-    { key: 'logs', label: 'Logs' },
-    { key: 'cache', label: 'Cache' },
-    { key: 'uploads', label: 'Uploads' },
-    { key: 'backups', label: 'Backups' },
+    { key: 'logs', label: 'Logs', color: 'bg-amber-400' },
+    { key: 'cache', label: 'Cache', color: 'bg-sky-400' },
+    { key: 'uploads', label: 'Uploads', color: 'bg-emerald-500' },
+    { key: 'backups', label: 'Backups', color: 'bg-violet-500' },
 ];
 
 const formatSize = (bytes) => {
@@ -48,9 +49,9 @@ const formatSize = (bytes) => {
 };
 
 const dependencyAreas = [
-    { key: 'vendor', label: 'vendor' },
-    { key: 'node_modules', label: 'node_modules' },
-    { key: '.git', label: '.git' },
+    { key: 'vendor', label: 'vendor', color: 'bg-rose-400' },
+    { key: 'node_modules', label: 'node_modules', color: 'bg-lime-500' },
+    { key: '.git', label: '.git', color: 'bg-slate-500' },
 ];
 
 // id инстанса → { loading, error, data }. vendor, node_modules и .git считаются только по кнопке:
@@ -123,6 +124,23 @@ const sumAreas = (usage, areas) => areas.reduce((sum, { key }) => sum + (usage?.
 
 const instanceTotal = (id) =>
     sumAreas(props.disk?.[id], diskAreas) + sumAreas(dependencies[id]?.data, dependencyAreas);
+
+const diskSegments = (id) => {
+    const total = instanceTotal(id);
+
+    if (total === 0) return [];
+
+    return [
+        ...diskAreas.map((area) => ({ ...area, usage: props.disk?.[id]?.[area.key] })),
+        ...dependencyAreas.map((area) => ({ ...area, usage: dependencies[id]?.data?.[area.key] })),
+    ]
+        .filter(({ usage }) => usage?.bytes > 0)
+        .map(({ usage, ...area }) => ({
+            ...area,
+            bytes: usage.bytes,
+            percent: (usage.bytes / total) * 100,
+        }));
+};
 
 const grandTotal = computed(() =>
     props.disk ? Object.keys(props.disk).reduce((sum, id) => sum + instanceTotal(id), 0) : null,
@@ -243,13 +261,30 @@ onMounted(() => {
                             <p v-else-if="!disk[instance.id]" class="text-gray-400 dark:text-gray-500">
                                 Disk usage unknown: instance path is not readable.
                             </p>
-                            <dl v-else class="grid grid-cols-2 gap-x-4 gap-y-1">
+                            <div
+                                v-if="disk && disk[instance.id] && diskSegments(instance.id).length"
+                                class="mb-2 flex h-2 gap-px overflow-hidden rounded-full bg-gray-100 dark:bg-gray-700"
+                                role="img"
+                                :aria-label="diskSegments(instance.id).map((s) => `${s.label} ${formatSize(s.bytes)}`).join(', ')"
+                            >
+                                <span
+                                    v-for="segment in diskSegments(instance.id)"
+                                    :key="segment.key"
+                                    class="block h-full min-w-[2px]"
+                                    :class="segment.color"
+                                    :style="{ width: `${segment.percent}%` }"
+                                    :title="`${segment.label}: ${formatSize(segment.bytes)} (${Math.round(segment.percent)}%)`"
+                                />
+                            </div>
+                            <dl v-if="disk && disk[instance.id]" class="grid grid-cols-2 gap-x-4 gap-y-1">
                                 <div
                                     v-for="area in diskAreas"
                                     :key="area.key"
                                     class="flex justify-between gap-2"
                                 >
-                                    <dt class="text-gray-400 dark:text-gray-500">{{ area.label }}</dt>
+                                    <dt class="flex items-center gap-1.5 text-gray-400 dark:text-gray-500">
+                                        <span class="size-2 shrink-0 rounded-full" :class="area.color" />{{ area.label }}
+                                    </dt>
                                     <dd
                                         v-if="disk[instance.id][area.key]"
                                         class="text-gray-700 dark:text-gray-300"
@@ -279,7 +314,9 @@ onMounted(() => {
                                         :key="area.key"
                                         class="flex justify-between gap-2"
                                     >
-                                        <dt class="truncate text-gray-400 dark:text-gray-500">{{ area.label }}</dt>
+                                        <dt class="flex min-w-0 items-center gap-1.5 text-gray-400 dark:text-gray-500">
+                                            <span class="size-2 shrink-0 rounded-full" :class="area.color" /><span class="truncate">{{ area.label }}</span>
+                                        </dt>
                                         <dd
                                             v-if="dependencies[instance.id].data[area.key]"
                                             class="whitespace-nowrap text-gray-700 dark:text-gray-300"
