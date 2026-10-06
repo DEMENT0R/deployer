@@ -30,6 +30,9 @@ const props = defineProps({
 // Меньше десятой части раздела — пора чистить, пока деплой не упал посреди npm install.
 const isLow = (volume) => volume.total > 0 && volume.free / volume.total < 0.1;
 
+const usedPercent = (volume) =>
+    volume.total > 0 ? Math.round(((volume.total - volume.free) / volume.total) * 100) : 0;
+
 const diskAreas = [
     { key: 'logs', label: 'Logs' },
     { key: 'cache', label: 'Cache' },
@@ -156,14 +159,29 @@ onMounted(() => {
                     <span
                         v-for="volume in volumes ?? []"
                         :key="volume.path"
+                        class="inline-flex flex-col gap-1"
                         :class="
                             isLow(volume)
                                 ? 'font-medium text-red-600 dark:text-red-400'
                                 : 'text-gray-500 dark:text-gray-400'
                         "
-                        :title="`Partition of ${volume.path}`"
+                        :title="`Partition of ${volume.path}: ${usedPercent(volume)}% used`"
                     >
-                        Free: {{ formatSize(volume.free) }} of {{ formatSize(volume.total) }}
+                        <span>Free: {{ formatSize(volume.free) }} of {{ formatSize(volume.total) }}</span>
+                        <span
+                            class="block h-1.5 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700"
+                            role="progressbar"
+                            :aria-valuenow="usedPercent(volume)"
+                            aria-valuemin="0"
+                            aria-valuemax="100"
+                            :aria-label="`Used space on ${volume.path}`"
+                        >
+                            <span
+                                class="block h-full rounded-full"
+                                :class="isLow(volume) ? 'bg-red-500 dark:bg-red-400' : 'bg-indigo-500 dark:bg-indigo-400'"
+                                :style="{ width: `${usedPercent(volume)}%` }"
+                            />
+                        </span>
                     </span>
                 </div>
             </div>
